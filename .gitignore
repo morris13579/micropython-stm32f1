@@ -1,0 +1,64 @@
+# Compiled Sources
+###################
+*.o
+*.a
+*.elf
+*.bin
+*.map
+*.hex
+*.dis
+*.exe
+
+# Packages
+############
+
+# Logs and Databases
+######################
+*.log
+
+# VIM Swap Files
+######################
+*.swp
+
+# Build directory
+######################
+build/
+
+# Test failure outputs
+######################
+tests/*.exp
+tests/*.out
+
+# Python cache files
+######################
+__pycache__/
+*.pyc
+
+# Customized Makefile/project overrides
+######################
+GNUmakefile
+user.props
+
+# Generated rst files
+######################
+genrst/
+######################
+#docs/
+#drivers/
+#examples/
+#extmod/
+#logo/
+#mpy-cross/
+#py/
+#tests/
+#tools/
+#ports/
+#lib/
+#!ports/stm32/*
+#!lib/stm32lib/*
+
+
+
+
+
+
