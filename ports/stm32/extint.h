@@ -50,8 +50,9 @@
 /*----Add to support stm32f1------*/
 /*--------------------------------*/
 #elif defined(STM32F1)
-#define EXTI_RTC_TIMESTAMP      (19)
-#define EXTI_RTC_WAKEUP         (20)
+#define EXTI_RTC_TIMESTAMP      (17)
+#define EXTI_RTC_WAKEUP         (17)
+#define EXTI_USB_OTG_FS_WAKEUP  (18)
 #elif defined(STM32H7)
 #define EXTI_RTC_TIMESTAMP      (18)
 #define EXTI_RTC_WAKEUP         (19)

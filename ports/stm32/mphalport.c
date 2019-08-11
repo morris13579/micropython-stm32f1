@@ -161,8 +161,8 @@ void mp_hal_pin_config(mp_hal_pin_obj_t pin_obj, uint32_t mode, uint32_t pull, c
 	//GPIO_MODE_OUTPUT_OD
 	//GPIO_MODE_AF_PP    
 	//GPIO_MODE_AF_OD    
-	//GPIO_MODE_AF_INPUT 
-	//GPIO_MODE_ANALOG = GPIO_MODE_INPUT
+	//GPIO_MODE_AF_INPUT  = GPIO_MODE_INPUT
+	//GPIO_MODE_ANALOG
 	
 	//alt設置 詳看手冊110頁
 	
@@ -203,8 +203,11 @@ void mp_hal_pin_config(mp_hal_pin_obj_t pin_obj, uint32_t mode, uint32_t pull, c
 	CAN TX			GPIO_MODE_AF_PP		NO_USE
 	CAN RX			GPIO_MODE_INPUT		GPIO_NOPULL OR GPIO_PULLUP
 	*/
-	
-	
+	/*
+	printf("\nsetting\n");
+	printf("\nmode = %ld\n",mode);
+	printf("\npull = %ld\n",pull);
+	*/
 	
 	if(		\
 		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_ETR )		|| \

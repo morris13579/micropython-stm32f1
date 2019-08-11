@@ -438,25 +438,18 @@ void stm32_main(uint32_t reset_mode) {
 
     #endif
 	HAL_Init();
-	
     #if __CORTEX_M >= 0x03
     // Set the priority grouping
     NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
     #endif
-	
     // SysTick is needed by HAL_RCC_ClockConfig (called in SystemClock_Config)
     HAL_InitTick(TICK_INT_PRIORITY);
-	
-	/*Configure the SysTick to have interrupt in 1ms time basis*/
-	
     // set the system clock to be HSE
 	//HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);//SysTick頻率為HCLK
     SystemClock_Config();
 	
 	
 	HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
-	//HAL_SYSTICK_Config(72000000/1000);
-	
 
     // enable GPIO clocks
     __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -676,18 +669,11 @@ soft_reset:
     // If there is only one LED on the board then it's used to signal boot-up
     // and so we turn it off here.  Otherwise LED(1) is used to indicate dirty
     // flash cache and so we shouldn't change its state.
-	
-	
-	
     led_state(1, 0);
     #endif
     led_state(2, 0);
     led_state(3, 0);
     led_state(4, 0);
-	
-	
-	
-	
     // Now we initialise sub-systems that need configuration from boot.py,
     // or whose initialisation can be safely deferred until after running
     // boot.py.

@@ -332,8 +332,62 @@ STATIC mp_obj_t pin_obj_init_helper(const pin_obj_t *self, size_t n_args, const 
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
 	#if defined(STM32F1)
-	while(0);
-	return mp_const_none;
+	static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_mode, MP_ARG_REQUIRED | MP_ARG_INT },
+        { MP_QSTR_pull, MP_ARG_OBJ, {.u_rom_obj = MP_ROM_PTR(&mp_const_none_obj)}},
+        { MP_QSTR_af, MP_ARG_INT, {.u_int = -1}}, // legacy
+        { MP_QSTR_value, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
+        { MP_QSTR_alt, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1}},
+    };
+
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    // get io mode
+    uint mode = args[0].u_int;
+    if (!IS_GPIO_MODE(mode)) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid pin mode: %d", mode));
+    }
+
+    // get pull mode
+    uint pull = GPIO_NOPULL;
+    if (args[1].u_obj != mp_const_none) {
+        pull = mp_obj_get_int(args[1].u_obj);
+    }
+    if (!IS_GPIO_PULL(pull)) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid pin pull: %d", pull));
+    }
+
+    // get af (alternate function); alt-arg overrides af-arg
+    mp_int_t af = args[4].u_int;
+    if (af == -1) {
+        af = args[2].u_int;
+    }
+    if ((mode == GPIO_MODE_AF_PP || mode == GPIO_MODE_AF_OD) ) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid pin af: %d", af));
+    }
+
+    // enable the peripheral clock for the port of this pin
+    mp_hal_gpio_clock_enable(self->gpio);
+
+    // if given, set the pin value before initialising to prevent glitches
+    if (args[3].u_obj != MP_OBJ_NULL) {
+        mp_hal_pin_write(self, mp_obj_is_true(args[3].u_obj));
+    }
+
+    // configure the GPIO as requested
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.Pin = self->pin_mask;
+    GPIO_InitStructure.Mode = mode;
+    GPIO_InitStructure.Pull = pull;
+    GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+    //GPIO_InitStructure.Alternate = af;
+    HAL_GPIO_Init(self->gpio, &GPIO_InitStructure);
+
+    return mp_const_none;
+	
+	
 	#else
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_mode, MP_ARG_REQUIRED | MP_ARG_INT },
