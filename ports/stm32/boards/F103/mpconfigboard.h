@@ -2,8 +2,6 @@
 #define MICROPY_HW_MCU_NAME         "STM32F103xE"
 
 
-
-
 #define MICROPY_HW_HAS_SWITCH       (1)
 #define MICROPY_HW_HAS_FLASH        (0)
 #define MICROPY_HW_HAS_SDCARD       (0)
@@ -11,7 +9,7 @@
 #define MICROPY_HW_HAS_LIS3DSH      (0)
 #define MICROPY_HW_HAS_LCD          (0)
 #define MICROPY_HW_ENABLE_RNG       (0)
-#define MICROPY_HW_ENABLE_RTC       (0)
+#define MICROPY_HW_ENABLE_RTC       (1)
 #define MICROPY_HW_ENABLE_TIMER     (1)
 #define MICROPY_HW_ENABLE_SERVO     (0)
 #define MICROPY_HW_ENABLE_DAC       (1)
@@ -25,6 +23,13 @@
 #define MICROPY_HW_CLK_PLLN (336) // PLL clock in MHz
 #define MICROPY_HW_CLK_PLLP (RCC_PLLP_DIV2) // divide PLL clock by this to get core clock
 #define MICROPY_HW_CLK_PLLQ (7) // divide core clock by this to get 48MHz
+
+// The pyboard has a 32kHz crystal for the RTC
+#define MICROPY_HW_RTC_USE_LSE      (1)
+#define MICROPY_HW_RTC_USE_US       (0)
+#define MICROPY_HW_RTC_USE_CALOUT   (1)
+
+
 
 // USART1
 #define MICROPY_HW_UART1_TX     (pin_A9)   // PA9,PB6
@@ -80,6 +85,20 @@
 #define MICROPY_HW_USRSW_PULL       (GPIO_PULLUP)
 #define MICROPY_HW_USRSW_EXTI_MODE  (GPIO_MODE_IT_FALLING)
 #define MICROPY_HW_USRSW_PRESSED    (0)
+
+
+// USB config
+//#define MICROPY_HW_USB_HS              (1)
+//#define MICROPY_HW_USB_HS_IN_FS        (1)
+//#define MICROPY_HW_USB_VBUS_DETECT_PIN (pin_B13)
+//#define MICROPY_HW_USB_OTG_ID_PIN      (pin_B12)
+
+
+
+
+
+
+
 
 
 

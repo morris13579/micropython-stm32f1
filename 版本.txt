@@ -8,3 +8,6 @@ adc
 1.2
 dac
 dac dma
+
+1.3
+rtc ok

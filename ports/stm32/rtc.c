@@ -54,7 +54,7 @@ static mp_uint_t rtc_info;
 // modify RTC_ASYNCH_PREDIV & RTC_SYNCH_PREDIV in board/<BN>/mpconfigport.h to change sub-second ticks
 // default is 3906.25 us, min is ~30.52 us (will increase Ivbat by ~500nA)
 #ifndef RTC_ASYNCH_PREDIV
-#define RTC_ASYNCH_PREDIV (0x7f)
+#define RTC_ASYNCH_PREDIV (0x7f) //32767
 #endif
 #ifndef RTC_SYNCH_PREDIV
 #define RTC_SYNCH_PREDIV  (0x00ff)
@@ -79,7 +79,42 @@ void rtc_init_start(bool force_init) {
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
 	#if defined(STM32F1)
-	while(0);
+	RTCHandle.Init.AsynchPrediv = RTC_ASYNCH_PREDIV; 	//時鐘週期設置(有待觀察,看是否跑慢了?)理論值：32767	
+	RTCHandle.Init.AsynchPrediv = 32767;
+	
+	rtc_need_init_finalise = false;
+	
+	if (!force_init) {
+        uint32_t bdcr = RCC->BDCR;
+        if ((bdcr & (RCC_BDCR_RTCEN | RCC_BDCR_RTCSEL | RCC_BDCR_LSEON | RCC_BDCR_LSERDY))
+            == (RCC_BDCR_RTCEN | RCC_BDCR_RTCSEL_0 | RCC_BDCR_LSEON | RCC_BDCR_LSERDY)) {
+            // LSE is enabled & ready --> no need to (re-)init RTC
+            // remove Backup Domain write protection
+            HAL_PWR_EnableBkUpAccess();
+            // Clear source Reset Flag
+            __HAL_RCC_CLEAR_RESET_FLAGS();
+            // provide some status information
+            rtc_info |= 0x40000 | (RCC->BDCR & 7) | (RCC->CSR & 3) << 8;
+            return;
+        } else if ((bdcr & (RCC_BDCR_RTCEN | RCC_BDCR_RTCSEL))
+            == (RCC_BDCR_RTCEN | RCC_BDCR_RTCSEL_1)) {
+            // LSI configured as the RTC clock source --> no need to (re-)init RTC
+            // remove Backup Domain write protection
+            HAL_PWR_EnableBkUpAccess();
+            // Clear source Reset Flag
+            __HAL_RCC_CLEAR_RESET_FLAGS();
+            // Turn the LSI on (it may need this even if the RTC is running)
+            RCC->CSR |= RCC_CSR_LSION;
+            // provide some status information
+            rtc_info |= 0x80000 | (RCC->BDCR & 7) | (RCC->CSR & 3) << 8;
+            return;
+        }
+    }
+
+    rtc_startup_tick = HAL_GetTick();
+    rtc_info = 0x3f000000 | (rtc_startup_tick & 0xffffff);
+    PYB_RTC_MspInit_Kick(&RTCHandle, rtc_use_lse, MICROPY_HW_RTC_USE_BYPASS);
+	
 	#else
     /* Configure RTC prescaler and RTC data registers */
     /* RTC configured as follow:
@@ -227,6 +262,7 @@ STATIC HAL_StatusTypeDef PYB_RCC_OscConfig(RCC_OscInitTypeDef  *RCC_OscInitStruc
         // Enable write access to Backup domain
         //PWR->CR |= PWR_CR_DBP;
         // Wait for Backup domain Write protection disable
+		//__HAL_RCC_BKP_CLK_ENABLE();		//使能BSP時鐘
         while ((PWR->CR & PWR_CR_DBP) == RESET) {
             if (HAL_GetTick() - tickstart > RCC_DBP_TIMEOUT_VALUE) {
                 return HAL_TIMEOUT;
@@ -248,20 +284,36 @@ STATIC HAL_StatusTypeDef PYB_RCC_OscConfig(RCC_OscInitTypeDef  *RCC_OscInitStruc
         __HAL_RCC_LSE_CONFIG(RCC_OscInitStruct->LSEState);
     }
 
+
     return HAL_OK;
 }
 
+
 STATIC HAL_StatusTypeDef PYB_RTC_Init(RTC_HandleTypeDef *hrtc) {
-	
-	
 	/*--------------------------------*/
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
 	#if defined(STM32F1)
-	PYB_RTC_MspInit_Finalise(hrtc);
-	return HAL_OK;
-	#else
+	// Check the RTC peripheral state
+    if (hrtc == NULL) {
+        return HAL_ERROR;
+    }
 	
+	if (hrtc->State == HAL_RTC_STATE_RESET) {
+        // Allocate lock resource and initialize it
+        hrtc->Lock = HAL_UNLOCKED;
+        // Initialize RTC MSP
+        if (PYB_RTC_MspInit_Finalise(hrtc) != HAL_OK) {
+            return HAL_ERROR;
+        }
+    }
+	
+	if( HAL_RTC_Init(hrtc) != HAL_OK)
+			return HAL_ERROR;
+		else
+			return HAL_OK;
+
+	#else
     // Check the RTC peripheral state
     if (hrtc == NULL) {
         return HAL_ERROR;
@@ -326,17 +378,6 @@ STATIC HAL_StatusTypeDef PYB_RTC_Init(RTC_HandleTypeDef *hrtc) {
 }
 
 STATIC void PYB_RTC_MspInit_Kick(RTC_HandleTypeDef *hrtc, bool rtc_use_lse, bool rtc_use_byp) {
-	
-	
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-	#if defined(STM32F1)
-	while(0);
-	RCC_OscInitTypeDef RCC_OscInitStruct;
-	PYB_RCC_OscConfig(&RCC_OscInitStruct);
-	#else
-	
     /* To change the source clock of the RTC feature (LSE, LSI), You have to:
        - Enable the power clock using __PWR_CLK_ENABLE()
        - Enable write access using HAL_PWR_EnableBkUpAccess() function before to
@@ -368,8 +409,6 @@ STATIC void PYB_RTC_MspInit_Kick(RTC_HandleTypeDef *hrtc, bool rtc_use_lse, bool
 
     // now ramp up osc. in background and flag calendear init needed
     rtc_need_init_finalise = true;
-	
-	#endif
 }
 
 #ifndef MICROPY_HW_RTC_LSE_TIMEOUT_MS
@@ -383,12 +422,6 @@ STATIC void PYB_RTC_MspInit_Kick(RTC_HandleTypeDef *hrtc, bool rtc_use_lse, bool
 #endif
 
 STATIC HAL_StatusTypeDef PYB_RTC_MspInit_Finalise(RTC_HandleTypeDef *hrtc) {
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-	#if defined(STM32F1)
-	return HAL_OK;
-	#else
     // we already had a kick so now wait for the corresponding ready state...
     if (rtc_use_lse) {
         // we now have to wait for LSE ready or timeout
@@ -429,17 +462,10 @@ STATIC HAL_StatusTypeDef PYB_RTC_MspInit_Finalise(RTC_HandleTypeDef *hrtc) {
     // enable RTC peripheral clock
     __HAL_RCC_RTC_ENABLE();
     return HAL_OK;
-	#endif
 }
 
+
 STATIC void RTC_CalendarConfig(void) {
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-	#if defined(STM32F1)
-	while(0);
-	#else
-	
     // set the date to 1st Jan 2015
     RTC_DateTypeDef date;
     date.Year = 15;
@@ -457,15 +483,16 @@ STATIC void RTC_CalendarConfig(void) {
     time.Hours = 0;
     time.Minutes = 0;
     time.Seconds = 0;
+	#if !defined(STM32F1)
     time.TimeFormat = RTC_HOURFORMAT12_AM;
     time.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
     time.StoreOperation = RTC_STOREOPERATION_RESET;
+	#endif
 
     if (HAL_RTC_SetTime(&RTCHandle, &time, RTC_FORMAT_BIN) != HAL_OK) {
         // init error
         return;
     }
-	#endif
 	
 }
 
@@ -539,14 +566,207 @@ uint32_t rtc_us_to_subsec(uint32_t us) {
 #define rtc_subsec_to_us
 #endif
 
+/*--------------------------------*/
+/*----Add to support stm32f1------*/
+/*--------------------------------*/
+#if defined(STM32F1)
+typedef uint32_t  u32;
+typedef uint16_t u16;
+typedef uint8_t  u8;
+typedef __IO uint32_t  vu32;
+typedef __IO uint16_t vu16;
+typedef __IO uint8_t  vu8;
+typedef struct 
+{
+	vu8 hour;
+	vu8 min;
+	vu8 sec;			
+	//公歷日月年周
+	vu16 w_year;
+	vu8  w_month;
+	vu8  w_date;
+	vu8  week;	
+}_calendar_obj;			
+
+_calendar_obj calendar;//時鐘結構體 
+
+u8 Is_Leap_Year(u16 year)
+{			  
+	if(year%4==0) //必須能被4整除
+	{ 
+		if(year%100==0) 
+		{ 
+			if(year%400==0)return 1;//如果以00結尾,還要能被400整除 	   
+			else return 0;   
+		}else return 1;   
+	}else return 0;	
+}
+//月份數據表											 
+u8 const table_week[12]={0,3,3,6,1,4,6,2,5,0,3,5}; //月修正數據表	  
+//平年的月份日期表
+const u8 mon_table[12]={31,28,31,30,31,30,31,31,30,31,30,31};
+//獲得現在是星期幾
+//功能描述:輸入公歷日期得到星期(只允許1901-2099年)
+//year,month,day：公歷年月日 
+//返回值：星期號																						 
+u8 RTC_Get_Week(u16 year,u8 month,u8 day)
+{	
+	u16 temp2;
+	u8 yearH,yearL;
+	
+	yearH=year/100;	yearL=year%100; 
+	// 如果為21世紀,年份數加100  
+	if (yearH>19)yearL+=100;
+	// 所過閏年數只算1900年之後的  
+	temp2=yearL+yearL/4;
+	temp2=temp2%7; 
+	temp2=temp2+day+table_week[month-1];
+	if (yearL%4==0&&month<3)temp2--;
+	return(temp2%7);
+}
+
+u8 RTC_Get(void)
+{
+	static u16 daycnt=0;
+	u32 timecount=0; 
+	u32 temp=0;
+	u16 temp1=0;	  
+ 	timecount=RTC->CNTH;//得到計數器中的值(秒鐘數)
+	timecount<<=16;
+	timecount+=RTC->CNTL;			 
+
+ 	temp=timecount/86400;   //得到天數(秒鐘數對應的)
+	if(daycnt!=temp)//超過一天了
+	{	  
+		daycnt=temp;
+		temp1=1970;	//從1970年開始
+		while(temp>=365)
+		{				 
+			if(Is_Leap_Year(temp1))//是閏年
+			{
+				if(temp>=366)temp-=366;//閏年的秒鐘數
+				else break;  
+			}
+			else temp-=365;	  //平年 
+			temp1++;  
+		}   
+		calendar.w_year=temp1;//得到年份
+		temp1=0;
+		while(temp>=28)//超過了一個月
+		{
+			if(Is_Leap_Year(calendar.w_year)&&temp1==1)//當年是不是閏年/2月份
+			{
+				if(temp>=29)temp-=29;//閏年的秒鐘數
+				else break; 
+			}
+			else 
+			{
+				if(temp>=mon_table[temp1])temp-=mon_table[temp1];//平年
+				else break;
+			}
+			temp1++;  
+		}
+		calendar.w_month=temp1+1;	//得到月份
+		calendar.w_date=temp+1;  	//得到日期 
+	}
+	temp=timecount%86400;     		//得到秒鐘數   	   
+	calendar.hour=temp/3600;     	//小時
+	calendar.min=(temp%3600)/60; 	//分鐘	
+	calendar.sec=(temp%3600)%60; 	//秒鐘
+	calendar.week=RTC_Get_Week(calendar.w_year,calendar.w_month,calendar.w_date);//獲取星期   
+	return 0;
+}	 
+
+
+u8 RTC_Set(u16 syear,u8 smon,u8 sday,u8 hour,u8 min,u8 sec)
+{
+	u16 t;
+	u32 seccount=0;
+	
+	if(syear<1970||syear>2099)return 1;	   
+	for(t=1970;t<syear;t++)	//把所有年份的秒鐘相加
+	{
+		if(Is_Leap_Year(t))seccount+=31622400;//閏年的秒鐘數
+		else seccount+=31536000;			  //平年的秒鐘數
+	}
+	smon-=1;
+	for(t=0;t<smon;t++)	   //把前面月份的秒鐘數相加
+	{
+		seccount+=(u32)mon_table[t]*86400;//月份秒鐘數相加
+		if(Is_Leap_Year(syear)&&t==1)seccount+=86400;//閏年2月份增加一天的秒鐘數	   
+	}
+	seccount+=(u32)(sday-1)*86400;//把前面日期的秒鐘數相加 
+	seccount+=(u32)hour*3600;//小時秒鐘數
+    seccount+=(u32)min*60;	 //分鐘秒鐘數
+	seccount+=sec;//最後的秒鐘加上去
+	
+
+
+	//設置時鐘
+    RCC->APB1ENR|=1<<28;//使能電源時鐘
+    RCC->APB1ENR|=1<<27;//使能備份時鐘
+	PWR->CR|=1<<8;    //取消備份區寫保護
+	//上面三步是必須的!
+	RTC->CRL|=1<<4;   //允許配置 
+	RTC->CNTL=seccount&0xffff;
+	RTC->CNTH=seccount>>16;
+	RTC->CRL&=~(1<<4);//配置更新
+	while(!(RTC->CRL&(1<<5)));//等待RTC寄存器操作完成 
+	RTC_Get();
+	return 0;	    
+}
+
+
+#endif
 mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
+    rtc_init_finalise();
 	/*--------------------------------*/
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
 	#if defined(STM32F1)
-	return mp_const_none;
+	if (n_args == 1) {
+        // get date and time
+        // note: need to call get time then get date to correctly access the registers
+        RTC_Get();
+        mp_obj_t tuple[8] = {
+            mp_obj_new_int(calendar.w_year),
+            mp_obj_new_int(calendar.w_month),
+            mp_obj_new_int(calendar.w_date),
+            mp_obj_new_int(calendar.week),
+            mp_obj_new_int(calendar.hour),
+            mp_obj_new_int(calendar.min),
+            mp_obj_new_int(calendar.sec),
+			#if !defined(STM32F1)
+            mp_obj_new_int(rtc_subsec_to_us(time.SubSeconds)),
+			#else
+			mp_obj_new_int(rtc_subsec_to_us(0)),
+			#endif
+        };
+        return mp_obj_new_tuple(8, tuple);
+    } else {
+        // set date and time
+        mp_obj_t *items;
+
+        mp_obj_get_array_fixed_n(args[1], 8, &items);
+        calendar.w_year		= mp_obj_get_int(items[0]);
+        calendar.w_month	= mp_obj_get_int(items[1]);
+        calendar.w_date		= mp_obj_get_int(items[2]);
+        //date.WeekDay = mp_obj_get_int(items[3]);
+        calendar.hour		= mp_obj_get_int(items[4]);
+        calendar.min		= mp_obj_get_int(items[5]);
+        calendar.sec		= mp_obj_get_int(items[6]);
+		
+		printf("%d %d %d %d %d %d\r\n",calendar.w_year,calendar.w_month,calendar.w_date,calendar.hour,calendar.min,calendar.sec);
+        RTC_Set(	calendar.w_year   ,\
+					calendar.w_month  ,\
+					calendar.w_date   ,\
+					calendar.hour     ,\
+					calendar.min      ,\
+					calendar.sec);
+
+        return mp_const_none;
+    }
 	#else
-    rtc_init_finalise();
     if (n_args == 1) {
         // get date and time
         // note: need to call get time then get date to correctly access the registers
@@ -572,6 +792,7 @@ mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
 
         RTC_DateTypeDef date;
         date.Year = mp_obj_get_int(items[0]) - 2000;
+		date.Year = 40;
         date.Month = mp_obj_get_int(items[1]);
         date.Date = mp_obj_get_int(items[2]);
         date.WeekDay = mp_obj_get_int(items[3]);
@@ -581,9 +802,11 @@ mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
         time.Hours = mp_obj_get_int(items[4]);
         time.Minutes = mp_obj_get_int(items[5]);
         time.Seconds = mp_obj_get_int(items[6]);
+		#if !defined(STM32F1)
         time.TimeFormat = RTC_HOURFORMAT12_AM;
         time.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
         time.StoreOperation = RTC_STOREOPERATION_SET;
+		#endif
         HAL_RTC_SetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
 
         return mp_const_none;
@@ -605,7 +828,118 @@ mp_obj_t pyb_rtc_wakeup(size_t n_args, const mp_obj_t *args) {
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
 	#if defined(STM32F1)
-	return mp_const_none;
+	
+	// wut is wakeup counter start value, wucksel is clock source
+    // counter is decremented at wucksel rate, and wakes the MCU when it gets to 0
+    // wucksel=0b000 is RTC/16 (RTC runs at 32768Hz)
+    // wucksel=0b001 is RTC/8
+    // wucksel=0b010 is RTC/4
+    // wucksel=0b011 is RTC/2
+    // wucksel=0b100 is 1Hz clock
+    // wucksel=0b110 is 1Hz clock with 0x10000 added to wut
+    // so a 1 second wakeup could be wut=2047, wucksel=0b000, or wut=4095, wucksel=0b001, etc
+
+    rtc_init_finalise();
+
+    // disable wakeup IRQ while we configure it
+    HAL_NVIC_DisableIRQ(RTC_IRQn);
+
+    bool enable = false;
+    mp_int_t wucksel;
+    mp_int_t wut;
+    mp_obj_t callback = mp_const_none;
+    if (n_args <= 3) {
+        if (args[1] == mp_const_none) {
+            // disable wakeup
+        } else {
+            // time given in ms
+            mp_int_t ms = mp_obj_get_int(args[1]);
+            mp_int_t div = 2;
+            wucksel = 3;
+            while (div <= 16 && ms > 2000 * div) {
+                div *= 2;
+                wucksel -= 1;
+            }
+            if (div <= 16) {
+                wut = 32768 / div * ms / 1000;
+            } else {
+                // use 1Hz clock
+                wucksel = 4;
+                wut = ms / 1000;
+                if (wut > 0x10000) {
+                    // wut too large for 16-bit register, try to offset by 0x10000
+                    wucksel = 6;
+                    wut -= 0x10000;
+                    if (wut > 0x10000) {
+                        // wut still too large
+                        mp_raise_ValueError("wakeup value too large");
+                    }
+                }
+            }
+            // wut register should be 1 less than desired value, but guard against wut=0
+            if (wut > 0) {
+                wut -= 1;
+            }
+            enable = true;
+        }
+        if (n_args == 3) {
+            callback = args[2];
+        }
+    } else {
+        // config values given directly
+        wucksel = mp_obj_get_int(args[1]);
+        wut = mp_obj_get_int(args[2]);
+        callback = args[3];
+        enable = true;
+    }
+
+    // set the callback
+    MP_STATE_PORT(pyb_extint_callback)[EXTI_RTC_WAKEUP] = callback;
+
+
+    // wait until WUTWF is set
+    while(!(RTC->CRL&(1<<5)));//等待RTC寄存器操作完成 
+
+    if (enable) {
+        // program WUT
+        //RTC->WUTR = wut;
+
+        // set WUTIE to enable wakeup interrupts
+        // set WUTE to enable wakeup
+        // program WUCKSEL
+        //RTC->CR = (RTC->CR & ~7) | (1 << 14) | (1 << 10) | (wucksel & 7);
+
+        // enable register write protection
+        HAL_PWR_DisableBkUpAccess();	//取消備份區域寫保護
+
+        // enable external interrupts on line EXTI_RTC_WAKEUP
+        SET_BIT(RTC->CRH, RTC_IT_SEC);
+	
+		// clear interrupt flags
+		RTC->CRL = ~(RTC_FLAG_SEC);
+
+
+        NVIC_SetPriority(RTC_IRQn, IRQ_PRI_RTC_WKUP);
+        HAL_NVIC_EnableIRQ(RTC_IRQn);
+
+        //printf("wut=%d wucksel=%d\n", wut, wucksel);
+    } else {
+        // clear WUTIE to disable interrupts
+        //RTC->CR &= ~RTC_CR_WUTIE;
+
+        // enable register write protection
+        HAL_PWR_DisableBkUpAccess();	//取消備份區域寫保護
+
+        // disable external interrupts on line EXTI_RTC_WAKEUP
+       CLEAR_BIT(RTC->CRH, RTC_IT_SEC);
+    }
+
+    return mp_const_none;
+	
+	
+	
+	
+	
 	#else
 	
     // wut is wakeup counter start value, wucksel is clock source
