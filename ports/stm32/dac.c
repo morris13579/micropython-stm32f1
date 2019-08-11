@@ -246,6 +246,11 @@ STATIC mp_obj_t pyb_dac_init_helper(pyb_dac_obj_t *self, size_t n_args, const mp
     __HAL_RCC_DAC12_CLK_ENABLE();
     #elif defined(STM32F0) || defined(STM32L4)
     __HAL_RCC_DAC1_CLK_ENABLE();
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#elif defined(STM32F1)
+	__HAL_RCC_DAC_CLK_ENABLE();
     #else
     #error Unsupported Processor
     #endif

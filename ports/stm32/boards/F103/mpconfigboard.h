@@ -14,7 +14,7 @@
 #define MICROPY_HW_ENABLE_RTC       (0)
 #define MICROPY_HW_ENABLE_TIMER     (1)
 #define MICROPY_HW_ENABLE_SERVO     (0)
-#define MICROPY_HW_ENABLE_DAC       (0)
+#define MICROPY_HW_ENABLE_DAC       (1)
 #define MICROPY_HW_ENABLE_CAN       (0)
 #define MICROPY_HW_ENABLE_USB       (0)
 #define MICROPY_HW_SDCARD_MOUNT_AT_BOOT  (0)

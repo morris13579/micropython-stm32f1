@@ -728,6 +728,11 @@ STATIC mp_obj_t pyb_timer_init_helper(pyb_timer_obj_t *self, size_t n_args, cons
 STATIC const uint32_t tim_instance_table[MICROPY_HW_MAX_TIMER] = {
     #if defined(STM32F0)
     TIM_ENTRY(1, TIM1_BRK_UP_TRG_COM_IRQn),
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#elif defined(STM32F1)
+	TIM_ENTRY(1, TIM1_UP_IRQn),
     #elif defined(STM32F4) || defined(STM32F7)
     TIM_ENTRY(1, TIM1_UP_TIM10_IRQn),
     #elif defined(STM32L4)
@@ -751,7 +756,12 @@ STATIC const uint32_t tim_instance_table[MICROPY_HW_MAX_TIMER] = {
     #endif
     #if defined(TIM8)
     #if defined(STM32F4) || defined(STM32F7)
-    TIM_ENTRY(8, TIM8_UP_TIM13_IRQn),
+	 TIM_ENTRY(8, TIM8_UP_TIM13_IRQn),
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#elif defined(STM32F1)
+	TIM_ENTRY(1, TIM1_UP_IRQn),
     #elif defined(STM32L4)
     TIM_ENTRY(8, TIM8_UP_IRQn),
     #endif
