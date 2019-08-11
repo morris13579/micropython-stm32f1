@@ -198,8 +198,8 @@
 /*--------------------------------*/
 #elif defined(STM32F1)
 
-#define MP_HAL_UNIQUE_ID_ADDRESS (0x1ffff7e8)   //stm32 96位元唯一id位置
-#define PYB_EXTI_NUM_VECTORS (23)
+#define MP_HAL_UNIQUE_ID_ADDRESS (0x1FFFF7E8U)   //stm32 96位元唯一id位置
+#define PYB_EXTI_NUM_VECTORS (19)
 #define MICROPY_HW_MAX_I2C (2)
 #define MICROPY_HW_MAX_TIMER (8)
 #define MICROPY_HW_MAX_UART (5)

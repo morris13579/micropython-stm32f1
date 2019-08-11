@@ -139,6 +139,18 @@ STATIC mp_obj_t pyb_extint_callback_arg[EXTI_NUM_VECTORS];
 #endif
 
 STATIC const uint8_t nvic_irq_channel[EXTI_NUM_VECTORS] = {
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	EXTI0_IRQn,     EXTI1_IRQn,     EXTI2_IRQn,     EXTI3_IRQn,     EXTI4_IRQn,
+    EXTI9_5_IRQn,   EXTI9_5_IRQn,   EXTI9_5_IRQn,   EXTI9_5_IRQn,   EXTI9_5_IRQn,
+    EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn,
+    EXTI15_10_IRQn,
+	PVD_IRQn,
+	RTC_IRQn,
+	USBWakeUp_IRQn, // internal USB wakeup event
+	#else
     #if defined(STM32F0)
     EXTI0_1_IRQn,  EXTI0_1_IRQn,  EXTI2_3_IRQn,  EXTI2_3_IRQn,
     EXTI4_15_IRQn, EXTI4_15_IRQn, EXTI4_15_IRQn, EXTI4_15_IRQn,
@@ -170,17 +182,12 @@ STATIC const uint8_t nvic_irq_channel[EXTI_NUM_VECTORS] = {
     #endif
     ETH_WKUP_IRQn,
     OTG_HS_WKUP_IRQn,
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-		#if defined(STM32F1)
-		RTC_IRQn,
-		#else
-		TAMP_STAMP_IRQn,
-		RTC_WKUP_IRQn,
-	
-		#endif
+	TAMP_STAMP_IRQn,
+	RTC_WKUP_IRQn,
     #endif
+	#endif
+	
+	
 };
 
 // Set override_callback_obj to true if you want to unconditionally set the

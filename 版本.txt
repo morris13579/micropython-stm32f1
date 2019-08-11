@@ -11,3 +11,6 @@ dac dma
 
 1.3
 rtc ok
+
+1.4
+set freq ok

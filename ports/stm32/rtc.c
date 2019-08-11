@@ -756,7 +756,7 @@ mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
         calendar.min		= mp_obj_get_int(items[5]);
         calendar.sec		= mp_obj_get_int(items[6]);
 		
-		printf("%d %d %d %d %d %d\r\n",calendar.w_year,calendar.w_month,calendar.w_date,calendar.hour,calendar.min,calendar.sec);
+		//printf("%d %d %d %d %d %d\r\n",calendar.w_year,calendar.w_month,calendar.w_date,calendar.hour,calendar.min,calendar.sec);
         RTC_Set(	calendar.w_year   ,\
 					calendar.w_month  ,\
 					calendar.w_date   ,\
@@ -894,8 +894,11 @@ mp_obj_t pyb_rtc_wakeup(size_t n_args, const mp_obj_t *args) {
     }
 
     // set the callback
-    MP_STATE_PORT(pyb_extint_callback)[EXTI_RTC_WAKEUP] = callback;
-
+	#if defined(STM32F1)
+    MP_STATE_PORT(pyb_extint_callback)[RTC_IRQn] = callback;
+	#else
+	MP_STATE_PORT(pyb_extint_callback)[EXTI_RTC_WAKEUP] = callback;
+	#endif
 
     // wait until WUTWF is set
     while(!(RTC->CRL&(1<<5)));//等待RTC寄存器操作完成 

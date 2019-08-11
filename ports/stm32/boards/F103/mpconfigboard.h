@@ -3,8 +3,8 @@
 
 
 #define MICROPY_HW_HAS_SWITCH       (1)
-#define MICROPY_HW_HAS_FLASH        (0)
-#define MICROPY_HW_HAS_SDCARD       (0)
+#define MICROPY_HW_HAS_FLASH        (1)
+#define MICROPY_HW_HAS_SDCARD       (0)  //if have sdcard
 #define MICROPY_HW_HAS_MMA7660      (0)
 #define MICROPY_HW_HAS_LIS3DSH      (0)
 #define MICROPY_HW_HAS_LCD          (0)
@@ -15,7 +15,13 @@
 #define MICROPY_HW_ENABLE_DAC       (1)
 #define MICROPY_HW_ENABLE_CAN       (0)
 #define MICROPY_HW_ENABLE_USB       (0)
-#define MICROPY_HW_SDCARD_MOUNT_AT_BOOT  (0)
+
+// USB config
+//#define MICROPY_HW_USB_FS              (1)
+//#define MICROPY_HW_USB_VBUS_DETECT_PIN (pin_A9)
+
+
+//#define MICROPY_HW_SDCARD_MOUNT_AT_BOOT  (0)
 
 
 // HSE is 8MHz

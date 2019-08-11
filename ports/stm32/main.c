@@ -69,39 +69,6 @@
 
 
 
-void send_uart1(char *buf)
-{
-	int i;
-	for(i=0;i<strlen(buf);i++)
-	{
-		while((USART1->SR&0X40)==0);//循環發送,直到發送完畢   
-		USART1->DR = buf[i];    
-	}	
-}
-
-void my_led_init()
-{
-	GPIO_InitTypeDef GPIO_Initure;
-
-    __HAL_RCC_GPIOB_CLK_ENABLE();           	//開啟GPIOB時鐘
-	__HAL_RCC_GPIOE_CLK_ENABLE();           	//開啟GPIOE時鐘
-	
-    GPIO_Initure.Pin=GPIO_PIN_5; 				//PB5
-    GPIO_Initure.Mode=GPIO_MODE_OUTPUT_PP;  	//推挽輸出
-    GPIO_Initure.Pull=GPIO_PULLUP;          	//上拉
-    GPIO_Initure.Speed=GPIO_SPEED_FREQ_HIGH;    	 	//高速
-    HAL_GPIO_Init(GPIOB,&GPIO_Initure);
-
-	GPIO_Initure.Pin=GPIO_PIN_5; 				//PE5
-	HAL_GPIO_Init(GPIOE,&GPIO_Initure);
-	
-    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5,GPIO_PIN_RESET);	//PB5置1，默認初始化後燈滅
-    HAL_GPIO_WritePin(GPIOE,GPIO_PIN_5,GPIO_PIN_RESET);	//PE5置1，默認初始化後燈滅
-}
-
-
-
-
 /*--------------------------------*/
 /*----Add to support stm32f1------*/
 /*--------------------------------*/

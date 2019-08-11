@@ -143,7 +143,7 @@ STATIC uint32_t calc_apb_div(uint32_t wanted_div) {
 }
 #endif
 
-
+//#include "stdio.h"
 int powerctrl_set_sysclk(uint32_t sysclk, uint32_t ahb, uint32_t apb1, uint32_t apb2) {
     // Return straightaway if the clocks are already at the desired frequency
     if (sysclk == HAL_RCC_GetSysClockFreq()
@@ -152,34 +152,143 @@ int powerctrl_set_sysclk(uint32_t sysclk, uint32_t ahb, uint32_t apb1, uint32_t 
         && apb2 == HAL_RCC_GetPCLK2Freq()) {
         return 0;
     }
-	
+	#if defined(STM32F1)
 	/*--------------------------------*/
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
-	#if defined(STM32F1)
-		uint32_t PLL = RCC_PLL_MUL9;
-		HAL_StatusTypeDef ret = HAL_OK;
-		RCC_OscInitTypeDef RCC_OscInitStructure; 
-		RCC_ClkInitTypeDef RCC_ClkInitStructure;
+	// RCC_PLL_MUL2 ~ RCC_PLL_MUL15
+	HAL_RCC_DeInit();
+	mp_hal_delay_ms(5);
+	uint32_t PLL;
+	uint32_t ahb_div;
+	uint32_t apb1_div;
+	uint32_t apb2_div;
+	uint32_t flash_latency;
+	uint32_t hse_prediv;
+	uint32_t HSI_CLOCK; 
+	//return -MP_EIO;      //無法變更頻率
+	//return -MP_EINVAL;   //無效的頻率
+	if ( sysclk >= 72000000) sysclk = 72000000;
+	if ( ahb    >= 72000000) ahb    = 72000000;
+	if ( apb1   >= 36000000) apb1   = 36000000;
+	if ( apb2   >= 72000000) apb2   = 72000000;
+	
+	
+	if( sysclk > 60000000)
+	{
+		hse_prediv = RCC_HSE_PREDIV_DIV1;
+		HSI_CLOCK  = HSI_VALUE ; 
+	}
+	else
+	{
+		hse_prediv = RCC_HSE_PREDIV_DIV2;
+		HSI_CLOCK  = HSI_VALUE / 2; 
+	}
+	//use RCC_HSE_PREDIV_DIV2
+	int pllvalue = sysclk / HSI_CLOCK ;  
+	if (	sysclk % HSI_CLOCK  != 0 || \
+			sysclk % ahb        != 0 || \
+			ahb    % apb1       != 0 || \
+			ahb    % apb2       != 0    \
+		)
+	{
+		return -MP_EINVAL;
+	}
+	switch(pllvalue)
+	{
+		case 2 : PLL = RCC_PLL_MUL2 ; break;
+		case 3 : PLL = RCC_PLL_MUL3 ; break;
+		case 4 : PLL = RCC_PLL_MUL4 ; break;
+		case 5 : PLL = RCC_PLL_MUL5 ; break;
+		case 6 : PLL = RCC_PLL_MUL6 ; break;
+		case 7 : PLL = RCC_PLL_MUL7 ; break;
+		case 8 : PLL = RCC_PLL_MUL8 ; break;
+		case 9 : PLL = RCC_PLL_MUL9 ; break;
+		case 10: PLL = RCC_PLL_MUL10; break;
+		case 11: PLL = RCC_PLL_MUL11; break;
+		case 12: PLL = RCC_PLL_MUL12; break;
+		case 13: PLL = RCC_PLL_MUL13; break;
+		case 14: PLL = RCC_PLL_MUL14; break;
+		case 15: PLL = RCC_PLL_MUL15; break;
+		default: return -MP_EINVAL;   break;
+	}
+	//printf("%ld %ld %ld %ld\n",sysclk,ahb,apb1,apb2);
+	//printf("%ld\n",HSI_CLOCK);
+	ahb_div   = sysclk / ahb;
+	apb1_div  = ahb    / apb1;
+	apb2_div  = ahb    / apb2;
+	//printf("%ld %ld %ld %ld\n",sysclk,ahb,apb1,apb2);
+	//printf("%d %ld %ld %ld \n",pllvalue,ahb_div,apb1_div,apb2_div);
+	
+	switch(ahb_div)
+	{
+		case 1   : ahb_div = RCC_SYSCLK_DIV1  ; break;
+		case 2   : ahb_div = RCC_SYSCLK_DIV2  ; break;
+		case 4   : ahb_div = RCC_SYSCLK_DIV4  ; break;
+		case 8   : ahb_div = RCC_SYSCLK_DIV8  ; break;
+		case 16  : ahb_div = RCC_SYSCLK_DIV16 ; break;
+		case 64  : ahb_div = RCC_SYSCLK_DIV64 ; break;
+		case 128 : ahb_div = RCC_SYSCLK_DIV128; break;
+		case 256 : ahb_div = RCC_SYSCLK_DIV256; break;
+		case 512 : ahb_div = RCC_SYSCLK_DIV512; break;
+		default:   return -MP_EINVAL;           break;
+	}
+	
+	switch(apb1_div)
+	{
+		case 1   : apb1_div = RCC_HCLK_DIV1  ; break;
+		case 2   : apb1_div = RCC_HCLK_DIV2  ; break;
+		case 4   : apb1_div = RCC_HCLK_DIV4  ; break;
+		case 8   : apb1_div = RCC_HCLK_DIV8  ; break;
+		case 16  : apb1_div = RCC_HCLK_DIV16 ; break;
+		default:   return -MP_EINVAL;          break;
+	}
+	
+	switch(apb2_div)
+	{
+		case 1   : apb2_div = RCC_HCLK_DIV1  ; break;
+		case 2   : apb2_div = RCC_HCLK_DIV2  ; break;
+		case 4   : apb2_div = RCC_HCLK_DIV4  ; break;
+		case 8   : apb2_div = RCC_HCLK_DIV8  ; break;
+		case 16  : apb2_div = RCC_HCLK_DIV16 ; break;
+		default:   return -MP_EINVAL;          break;
+	}
+	
+	HAL_StatusTypeDef ret = HAL_OK;
+	RCC_OscInitTypeDef RCC_OscInitStructure; 
+	RCC_ClkInitTypeDef RCC_ClkInitStructure;
 
-		RCC_OscInitStructure.OscillatorType=RCC_OSCILLATORTYPE_HSE;    
-		RCC_OscInitStructure.HSEState=RCC_HSE_ON;                      
-		RCC_OscInitStructure.HSEPredivValue=RCC_HSE_PREDIV_DIV1;		
-		RCC_OscInitStructure.PLL.PLLState=RCC_PLL_ON;					
-		RCC_OscInitStructure.PLL.PLLSource=RCC_PLLSOURCE_HSE;			
-		RCC_OscInitStructure.PLL.PLLMUL=PLL; 							
-		ret=HAL_RCC_OscConfig(&RCC_OscInitStructure);
+	RCC_OscInitStructure.OscillatorType	=RCC_OSCILLATORTYPE_HSE;    
+	RCC_OscInitStructure.HSEState		=RCC_HSE_ON;                      
+	RCC_OscInitStructure.HSEPredivValue	=hse_prediv;		
+	RCC_OscInitStructure.PLL.PLLState	=RCC_PLL_ON;					
+	RCC_OscInitStructure.PLL.PLLSource	=RCC_PLLSOURCE_HSE;			
+	RCC_OscInitStructure.PLL.PLLMUL		=PLL; 							
+	ret=HAL_RCC_OscConfig(&RCC_OscInitStructure);
+	mp_hal_delay_ms(5);
+	
+	if(ret!=HAL_OK) return -MP_EIO;
 
-		if(ret!=HAL_OK) while(1);
-
-		RCC_ClkInitStructure.ClockType=(RCC_CLOCKTYPE_SYSCLK|RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2);
-		RCC_ClkInitStructure.SYSCLKSource=RCC_SYSCLKSOURCE_PLLCLK;		
-		RCC_ClkInitStructure.AHBCLKDivider=RCC_SYSCLK_DIV1;				
-		RCC_ClkInitStructure.APB1CLKDivider=RCC_HCLK_DIV2; 				
-		RCC_ClkInitStructure.APB2CLKDivider=RCC_HCLK_DIV1; 				
-		ret=HAL_RCC_ClockConfig(&RCC_ClkInitStructure,FLASH_LATENCY_2);	
-
-		if(ret!=HAL_OK) while(1);
+	RCC_ClkInitStructure.ClockType		=(RCC_CLOCKTYPE_SYSCLK|RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2);
+	RCC_ClkInitStructure.SYSCLKSource	=RCC_SYSCLKSOURCE_PLLCLK;		
+	RCC_ClkInitStructure.AHBCLKDivider	=ahb_div;				
+	RCC_ClkInitStructure.APB1CLKDivider	=apb1_div; 				
+	RCC_ClkInitStructure.APB2CLKDivider	=apb2_div; 	
+	/*	
+	000 Zero wait state, if 0 < SYSCLK≤ 24 MHz
+	001 One wait state, if 24 MHz < SYSCLK ≤ 48 MHz
+	010 Two wait states, if 48 MHz < SYSCLK ≤ 72 MHz
+	*/
+	if( sysclk <= 24000000)
+		flash_latency = FLASH_LATENCY_0;
+	else if( sysclk <= 48000000)
+		flash_latency = FLASH_LATENCY_1;
+	else
+		flash_latency = FLASH_LATENCY_2;
+	
+	ret=HAL_RCC_ClockConfig(&RCC_ClkInitStructure,flash_latency);	
+	mp_hal_delay_ms(5);
+	if(ret!=HAL_OK) return -MP_EIO;
 	
 	#else
 		

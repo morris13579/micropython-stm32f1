@@ -342,6 +342,32 @@ STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
         #if defined(STM32F0) || defined(STM32L4)
         mp_raise_NotImplementedError("machine.freq set not supported yet");
         #else
+		/*--------------------------------*/
+		/*----Add to support stm32f1------*/
+		/*--------------------------------*/
+		#if defined(STM32F1)
+		mp_int_t sysclk = mp_obj_get_int(args[0]);
+        mp_int_t ahb = sysclk;
+        mp_int_t apb1 = ahb / 2;
+        mp_int_t apb2 = ahb;
+        if (n_args > 1) {
+            ahb = mp_obj_get_int(args[1]);
+            if (n_args > 2) {
+                apb1 = mp_obj_get_int(args[2]);
+                if (n_args > 3) {
+                    apb2 = mp_obj_get_int(args[3]);
+                }
+            }
+        }
+        int ret = powerctrl_set_sysclk(sysclk, ahb, apb1, apb2);
+        if (ret == -MP_EINVAL) {
+            mp_raise_ValueError("invalid freq");
+        } else if (ret < 0) {
+            void NORETURN __fatal_error(const char *msg);
+            __fatal_error("can't change freq");
+        }
+        return mp_const_none;
+		#else
         mp_int_t sysclk = mp_obj_get_int(args[0]);
         mp_int_t ahb = sysclk;
         mp_int_t apb1 = ahb / 4;
@@ -363,6 +389,7 @@ STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
             __fatal_error("can't change freq");
         }
         return mp_const_none;
+		#endif
         #endif
     }
 }
