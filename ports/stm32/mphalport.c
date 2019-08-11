@@ -126,83 +126,174 @@ void mp_hal_gpio_clock_enable(GPIO_TypeDef *gpio) {
     (void)tmp;
 }
 
+/*--------------------------------*/
+/*----Add to support stm32f1------*/
+/*--------------------------------*/
+#if defined(STM32F1)
+
+#include <stdio.h>
+
+#include "py/obj.h"
+#include "py/mphal.h"
+#include "pin.h"
+
+void mp_hal_pin_config(mp_hal_pin_obj_t pin_obj, uint32_t mode, uint32_t pull, const pin_af_obj_t *af) {
+    GPIO_TypeDef *gpio = pin_obj->gpio;  //gpio的暫存器結構體
+    uint32_t pin = pin_obj->pin; //0-15
+    mp_hal_gpio_clock_enable(gpio);
+	
+	//mode 選擇
+	//MP_HAL_PIN_MODE_INPUT
+	//MP_HAL_PIN_MODE_OUTPUT
+	//MP_HAL_PIN_MODE_ALT
+	//MP_HAL_PIN_MODE_ANALOG
+	//MP_HAL_PIN_MODE_ADC
+	//MP_HAL_PIN_MODE_OPEN_DRAIN
+	//MP_HAL_PIN_MODE_ALT_OPEN_DRAIN
+	//pull選擇
+	//MP_HAL_PIN_PULL_NONE
+	//MP_HAL_PIN_PULL_UP
+	//MP_HAL_PIN_PULL_DOWN
+	
+	//stm32f1 mode
+	//GPIO_MODE_INPUT    
+	//GPIO_MODE_OUTPUT_PP
+	//GPIO_MODE_OUTPUT_OD
+	//GPIO_MODE_AF_PP    
+	//GPIO_MODE_AF_OD    
+	//GPIO_MODE_AF_INPUT 
+	//GPIO_MODE_ANALOG = GPIO_MODE_INPUT
+	
+	//alt設置 詳看手冊110頁
+	
+	/*
+	
+					mode				pull
+	// TIM2/3/4/5
+	TIM ETR			GPIO_MODE_INPUT		GPIO_NOPULL
+	TIM CHx			GPIO_MODE_AF_PP		NO_USE
+	TIM CHx_ETR		GPIO_MODE_INPUT		GPIO_NOPULL
+	// TIM1/8
+	TIM CHxN		GPIO_MODE_AF_PP		NO_USE
+	TIM BKIN		GPIO_MODE_INPUT		GPIO_NOPULL
+	
+	USART RTS		GPIO_MODE_AF_PP		NO_USE
+	USART CTS		GPIO_MODE_INPUT		GPIO_NOPULL OR GPIO_PULLUP
+	USART CK		GPIO_MODE_AF_PP		NO_USE
+	USART TX		GPIO_MODE_AF_PP		NO_USE
+	USART RX		GPIO_MODE_INPUT		GPIO_NOPULL OR GPIO_PULLUP
+	
+	SPI SCK			
+	主模式			GPIO_MODE_AF_PP		NO_USE
+	從模式			GPIO_MODE_INPUT		GPIO_NOPULL
+	SPI MOSI		
+	主模式			GPIO_MODE_AF_PP		NO_USE
+	從模式			GPIO_MODE_INPUT		GPIO_NOPULL OR GPIO_PULLUP
+	SPI MISO		
+	主模式			GPIO_MODE_INPUT		GPIO_NOPULL OR GPIO_PULLUP
+	從模式			GPIO_MODE_AF_PP		NO_USE
+	SPI NSS			
+	硬件主/從模式	GPIO_MODE_INPUT		GPIO_NOPULL OR GPIO_PULLUP OR GPIO_PULLDOWM
+	硬件主模式/
+	NSS輸出使能		GPIO_MODE_AF_PP		NO_USE
+	
+	I2C SCL			GPIO_MODE_AF_OD		NO_USE
+	I2C SDA			GPIO_MODE_AF_OD		NO_USE
+	
+	CAN TX			GPIO_MODE_AF_PP		NO_USE
+	CAN RX			GPIO_MODE_INPUT		GPIO_NOPULL OR GPIO_PULLUP
+	*/
+	
+	
+	
+	if(		\
+		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_ETR )		|| \
+		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH1_ETR )		|| \
+		/*( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH2_ETR )	|| \*/
+		/*( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH3_ETR )	|| \*/
+		/*( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH4_ETR )	|| \*/
+		( af->fn == AF_FN_UART  && af->type == AF_PIN_TYPE_UART_CTS )		|| \
+		( af->fn == AF_FN_UART  && af->type == AF_PIN_TYPE_UART_RX )		\
+		)
+	{
+		mode = GPIO_MODE_INPUT;
+	}
+	
+	else if(	 \
+		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH1 )			|| \
+		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH1N )			|| \
+		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH2 )			|| \
+		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH2N )			|| \
+		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH3 )			|| \
+		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH3N )			|| \
+		( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH4 )			|| \
+		/*( af->fn == AF_FN_TIM && af->type == AF_PIN_TYPE_TIM_CH4N )		|| \*/
+		( af->fn == AF_FN_UART  && af->type == AF_PIN_TYPE_UART_RTS )		|| \
+		( af->fn == AF_FN_USART && af->type == AF_PIN_TYPE_USART_CK )		|| \
+		( af->fn == AF_FN_UART  && af->type == AF_PIN_TYPE_UART_TX )		\
+		)
+	{
+		mode = GPIO_MODE_AF_PP;
+	}
+	else if(		\
+		( af->fn == AF_FN_I2C && af->type == AF_PIN_TYPE_I2C_SCL )		|| \
+		( af->fn == AF_FN_I2C && af->type == AF_PIN_TYPE_I2C_SDA )		\
+		)
+	{
+		mode = GPIO_MODE_OUTPUT_OD;
+	}
+	else if(	\
+			mode == MP_HAL_PIN_MODE_INPUT	||
+			mode == MP_HAL_PIN_MODE_ANALOG	||
+			mode == MP_HAL_PIN_MODE_ADC      )
+	{
+		mode = GPIO_MODE_INPUT;
+	}
+	else if(	mode == MP_HAL_PIN_MODE_OUTPUT )
+	{
+		mode = GPIO_MODE_OUTPUT_PP;
+	}
+	else if(	mode == MP_HAL_PIN_MODE_ALT )
+	{
+		mode = GPIO_MODE_AF_PP;
+	}
+	else if(	mode == MP_HAL_PIN_MODE_OPEN_DRAIN )
+	{
+		mode = GPIO_MODE_OUTPUT_OD;
+	}
+	else if(	mode == MP_HAL_PIN_MODE_ALT_OPEN_DRAIN )
+	{
+		mode = GPIO_MODE_AF_OD;
+	}
+	
+	GPIO_InitTypeDef GPIO_Initure;
+	GPIO_Initure.Pin	=	(1 << pin) ;  //GPIO_PIN_0 = 0x00 // GPIO_PIN_1 = 0x01
+	GPIO_Initure.Mode	=	mode; 
+	GPIO_Initure.Pull	=	pull;
+	GPIO_Initure.Speed	=	GPIO_SPEED_FREQ_HIGH;
+	HAL_GPIO_Init(gpio,&GPIO_Initure); 
+		
+}
+#else
 void mp_hal_pin_config(mp_hal_pin_obj_t pin_obj, uint32_t mode, uint32_t pull, uint32_t alt) {
     GPIO_TypeDef *gpio = pin_obj->gpio;  //gpio的暫存器結構體
     uint32_t pin = pin_obj->pin; //0-15
     mp_hal_gpio_clock_enable(gpio);
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-	#if defined(STM32F1)
-		//mode 選擇
-		//MP_HAL_PIN_MODE_INPUT
-		//MP_HAL_PIN_MODE_OUTPUT
-		//MP_HAL_PIN_MODE_ALT
-		//MP_HAL_PIN_MODE_ANALOG
-		//MP_HAL_PIN_MODE_ADC
-		//MP_HAL_PIN_MODE_OPEN_DRAIN
-		//MP_HAL_PIN_MODE_ALT_OPEN_DRAIN
-		//pull選擇
-		//MP_HAL_PIN_PULL_NONE
-		//MP_HAL_PIN_PULL_UP
-		//MP_HAL_PIN_PULL_DOWN
-		
-		//stm32f1 mode
-		//GPIO_MODE_INPUT    
-		//GPIO_MODE_OUTPUT_PP
-		//GPIO_MODE_OUTPUT_OD
-		//GPIO_MODE_AF_PP    
-		//GPIO_MODE_AF_OD    
-		//GPIO_MODE_AF_INPUT 
-		//GPIO_MODE_ANALOG = GPIO_MODE_INPUT
-		
-		//alt設置 詳看手冊110頁
-		
-		if(	mode == MP_HAL_PIN_MODE_INPUT	||
-			mode == MP_HAL_PIN_MODE_ANALOG	||
-			mode == MP_HAL_PIN_MODE_ADC      )
-		{
-			mode = GPIO_MODE_INPUT;
-		}
-		else if(	mode == MP_HAL_PIN_MODE_OUTPUT )
-		{
-			mode = GPIO_MODE_OUTPUT_PP;
-		}
-		else if(	mode == MP_HAL_PIN_MODE_ALT )
-		{
-			mode = GPIO_MODE_AF_PP;
-		}
-		else if(	mode == MP_HAL_PIN_MODE_OPEN_DRAIN )
-		{
-			mode = GPIO_MODE_OUTPUT_OD;
-		}
-		else if(	mode == MP_HAL_PIN_MODE_ALT_OPEN_DRAIN )
-		{
-			mode = GPIO_MODE_AF_OD;
-		}
-		
-		
-		GPIO_InitTypeDef GPIO_Initure;
-		GPIO_Initure.Pin	=	(1 << pin) ;  //GPIO_PIN_0 = 0x00 // GPIO_PIN_1 = 0x01
-		GPIO_Initure.Mode	=	mode; 
-		GPIO_Initure.Pull	=	pull;
-		GPIO_Initure.Speed	=	GPIO_SPEED_FREQ_HIGH;
-		HAL_GPIO_Init(gpio,&GPIO_Initure); 
-		
+	gpio->MODER = (gpio->MODER & ~(3 << (2 * pin))) | ((mode & 3) << (2 * pin));
+	#if defined(GPIO_ASCR_ASC0)
+		// The L4 has a special analog switch to connect the GPIO to the ADC
+		gpio->OTYPER = (gpio->OTYPER & ~(1 << pin)) | (((mode >> 2) & 1) << pin);
+		gpio->ASCR = (gpio->ASCR & ~(1 << pin)) | ((mode >> 3) & 1) << pin;
 	#else
-		gpio->MODER = (gpio->MODER & ~(3 << (2 * pin))) | ((mode & 3) << (2 * pin));
-		#if defined(GPIO_ASCR_ASC0)
-			// The L4 has a special analog switch to connect the GPIO to the ADC
-			gpio->OTYPER = (gpio->OTYPER & ~(1 << pin)) | (((mode >> 2) & 1) << pin);
-			gpio->ASCR = (gpio->ASCR & ~(1 << pin)) | ((mode >> 3) & 1) << pin;
-		#else
-			gpio->OTYPER = (gpio->OTYPER & ~(1 << pin)) | ((mode >> 2) << pin);
-		#endif
-		gpio->OSPEEDR = (gpio->OSPEEDR & ~(3 << (2 * pin))) | (2 << (2 * pin)); // full speed
-		gpio->PUPDR = (gpio->PUPDR & ~(3 << (2 * pin))) | (pull << (2 * pin));
-		gpio->AFR[pin >> 3] = (gpio->AFR[pin >> 3] & ~(15 << (4 * (pin & 7)))) | (alt << (4 * (pin & 7)));
+		gpio->OTYPER = (gpio->OTYPER & ~(1 << pin)) | ((mode >> 2) << pin);
 	#endif
+	gpio->OSPEEDR = (gpio->OSPEEDR & ~(3 << (2 * pin))) | (2 << (2 * pin)); // full speed
+	gpio->PUPDR = (gpio->PUPDR & ~(3 << (2 * pin))) | (pull << (2 * pin));
+	gpio->AFR[pin >> 3] = (gpio->AFR[pin >> 3] & ~(15 << (4 * (pin & 7)))) | (alt << (4 * (pin & 7)));
 }
+#endif
+
+
 
 bool mp_hal_pin_config_alt(mp_hal_pin_obj_t pin, uint32_t mode, uint32_t pull, uint8_t fn, uint8_t unit) {
     const pin_af_obj_t *af = pin_find_af(pin, fn, unit);
@@ -210,7 +301,14 @@ bool mp_hal_pin_config_alt(mp_hal_pin_obj_t pin, uint32_t mode, uint32_t pull, u
     if (af == NULL) {
         return false;
     }
-    mp_hal_pin_config(pin, mode, pull, af->idx);
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+    mp_hal_pin_config(pin, mode, pull, af);
+	#else
+	mp_hal_pin_config(pin, mode, pull, af->idx);
+	#endif
     return true;
 }
 

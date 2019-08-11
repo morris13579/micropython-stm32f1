@@ -267,6 +267,22 @@ STATIC void adcx_init_periph(ADC_HandleTypeDef *adch, uint32_t resolution) {
 	/*--------------------------------*/
 	#if defined(STM32F1)
 		adcx_clock_enable();
+		RCC_PeriphCLKInitTypeDef ADC_CLKInit;
+		ADC_CLKInit.PeriphClockSelection=RCC_PERIPHCLK_ADC;			//ADC外設時鐘
+		ADC_CLKInit.AdcClockSelection=RCC_ADCPCLK2_DIV6;			//分頻因子6時鐘為72M/6=12MHz
+		HAL_RCCEx_PeriphCLKConfig(&ADC_CLKInit);					//設置ADC時鐘
+		
+		adch->Instance					=	ADC1;
+		adch->Init.DataAlign				=	ADC_DATAALIGN_RIGHT;
+		adch->Init.ScanConvMode			=	DISABLE;
+		adch->Init.ContinuousConvMode	=	DISABLE;
+		adch->Init.NbrOfConversion		=	1;
+		adch->Init.DiscontinuousConvMode	=	DISABLE;
+		adch->Init.NbrOfDiscConversion	=	0;
+		adch->Init.ExternalTrigConv		=	ADC_SOFTWARE_START;
+		HAL_ADC_Init(adch);
+		
+		HAL_ADCEx_Calibration_Start(adch);					 //校準ADC
 	#else
 		adcx_clock_enable();
 
@@ -328,7 +344,15 @@ STATIC void adc_init_single(pyb_obj_adc_t *adc_obj) {
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
     #if defined(STM32F1)
-		while(0);
+		if (!is_adcx_channel(adc_obj->channel)) {
+			return;
+		}
+		if (ADC_FIRST_GPIO_CHANNEL <= adc_obj->channel && adc_obj->channel <= ADC_LAST_GPIO_CHANNEL) {
+			// Channels 0-16 correspond to real pins. Configure the GPIO pin in ADC mode.
+			const pin_obj_t *pin = pin_adc_table[adc_obj->channel];
+			mp_hal_pin_config(pin, MP_HAL_PIN_MODE_ADC, MP_HAL_PIN_PULL_NONE, 0);
+		}
+
 		adcx_init_periph(&adc_obj->handle, 0);
 	#else
 		if (!is_adcx_channel(adc_obj->channel)) {
@@ -758,7 +782,19 @@ void adc_init_all(pyb_adc_all_obj_t *adc_all, uint32_t resolution, uint32_t en_m
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
     #if defined(STM32F1)
-		while(0);
+		resolution = 12; //no support
+		for (uint32_t channel = ADC_FIRST_GPIO_CHANNEL; channel <= ADC_LAST_GPIO_CHANNEL; ++channel) {
+        // only initialise those channels that are selected with the en_mask
+        if (en_mask & (1 << channel)) {
+            // Channels 0-16 correspond to real pins. Configure the GPIO pin in
+            // ADC mode.
+            const pin_obj_t *pin = pin_adc_table[channel];
+            if (pin) {
+                mp_hal_pin_config(pin, MP_HAL_PIN_MODE_ADC, MP_HAL_PIN_PULL_NONE, 0);
+            }
+        }
+    }
+	adcx_init_periph(&adc_all->handle, resolution);
 	#else
 	
     switch (resolution) {
