@@ -243,7 +243,7 @@ void mp_hal_pin_config(mp_hal_pin_obj_t pin_obj, uint32_t mode, uint32_t pull, c
 		( af->fn == AF_FN_I2C && af->type == AF_PIN_TYPE_I2C_SDA )		\
 		)
 	{
-		mode = GPIO_MODE_OUTPUT_OD;
+		mode = GPIO_MODE_AF_OD;
 	}
 	else if(	\
 			mode == MP_HAL_PIN_MODE_INPUT	||

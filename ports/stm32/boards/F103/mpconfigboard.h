@@ -17,7 +17,6 @@
 #define MICROPY_HW_ENABLE_RTC       (1)
 #define MICROPY_HW_ENABLE_TIMER     (1)
 #define MICROPY_HW_ENABLE_DAC       (1)
-#define MICROPY_HW_ENABLE_CAN       (0)
 #define MICROPY_HW_ENABLE_USB       (0)
 
 // USB config
@@ -57,6 +56,12 @@
 #define MICROPY_HW_UART3_RX     (pin_B11) // PB11
 #define MICROPY_HW_UART3_RTS    (pin_B14) // PB14
 #define MICROPY_HW_UART3_CTS    (pin_B13) // PB13
+// USART4
+#define MICROPY_HW_UART4_TX     (pin_C10) // PC10
+#define MICROPY_HW_UART4_RX     (pin_C11) // PC11
+// USART5
+#define MICROPY_HW_UART5_TX     (pin_C12) // PC12
+#define MICROPY_HW_UART5_RX     (pin_D2 ) // PD2
 
 // I2C busses
 #define MICROPY_HW_I2C1_SCL (pin_B6)  // PB8,PB6
@@ -75,8 +80,8 @@
 #define MICROPY_HW_SPI2_MISO (pin_B14) // PB14
 #define MICROPY_HW_SPI2_MOSI (pin_B15) // PB15
 
-//#define MICROPY_HW_CAN1_TX   (pin_A12)
-//#define MICROPY_HW_CAN1_RX   (pin_A11)
+#define MICROPY_HW_CAN1_TX   (pin_A12)
+#define MICROPY_HW_CAN1_RX   (pin_A11)
 
 // LEDs
 #define MICROPY_HW_LED1             (pin_E5) // red

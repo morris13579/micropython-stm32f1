@@ -796,7 +796,6 @@ void UART10_IRQHandler(void) {
 #endif
 
 #endif
-
 #if defined(MICROPY_HW_CAN1_TX)
 void CAN1_RX0_IRQHandler(void) {
     IRQ_ENTER(CAN1_RX0_IRQn);

@@ -162,7 +162,6 @@ STATIC bool can_init(pyb_can_obj_t *can_obj) {
     can_obj->num_bus_off = 0;
 
     __HAL_CAN_ENABLE_IT(&can_obj->can, CAN_IT_ERR | CAN_IT_BOF | CAN_IT_EPV | CAN_IT_EWG);
-
     NVIC_SetPriority(sce_irq, IRQ_PRI_CAN);
     HAL_NVIC_EnableIRQ(sce_irq);
 

@@ -53,6 +53,8 @@
 /**
   * @brief This is the list of modules to be used in the HAL driver 
   */
+  
+  
 #define HAL_SPI_MODULE_ENABLED
 #define HAL_MODULE_ENABLED
 #define HAL_DMA_MODULE_ENABLED

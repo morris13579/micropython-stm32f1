@@ -1,25 +1,37 @@
 1.0 
-gpio
-timer
+gpio  ok
+timer ok
 
 1.1
-adc
+adc ok
 
 1.2
-dac
-dac dma
+dac ok
 
 1.3
 rtc ok
 
 1.4
-set freq ok
+freq ok
 
 1.5
 repair pin bug
 
 1.6
-timer pwm
-timer 2,5 bug
+repair timer pwm
+repair timer 2,5 bug
+
+1.7
+uart ok
+spi ok
+extint ok
+can ok not test
+i2c ok not test
+
+
+
+
+
+
 
 
