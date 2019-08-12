@@ -324,6 +324,9 @@ STATIC mp_obj_t pin_debug(size_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pin_debug_fun_obj, 1, 2, pin_debug);
 STATIC MP_DEFINE_CONST_CLASSMETHOD_OBJ(pin_debug_obj, MP_ROM_PTR(&pin_debug_fun_obj));
+#if defined(STM32F1)
+#define IS_GPIO_AF(x) 1
+#endif
 
 // init(mode, pull=None, af=-1, *, value, alt)
 STATIC mp_obj_t pin_obj_init_helper(const pin_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -364,7 +367,7 @@ STATIC mp_obj_t pin_obj_init_helper(const pin_obj_t *self, size_t n_args, const 
     if (af == -1) {
         af = args[2].u_int;
     }
-    if ((mode == GPIO_MODE_AF_PP || mode == GPIO_MODE_AF_OD) ) {
+    if ((mode == GPIO_MODE_AF_PP || mode == GPIO_MODE_AF_OD) && !IS_GPIO_AF(af)) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid pin af: %d", af));
     }
 

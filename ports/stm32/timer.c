@@ -240,6 +240,12 @@ uint32_t timer_get_source_freq(uint32_t tim_id) {
         #if defined(STM32F0)
         source = HAL_RCC_GetPCLK1Freq();
         clk_div = RCC->CFGR & RCC_CFGR_PPRE;
+		/*--------------------------------*/
+		/*----Add to support stm32f1------*/
+		/*--------------------------------*/
+		#elif defined(STM32F1)
+		source = HAL_RCC_GetPCLK2Freq();
+        clk_div = RCC->CFGR & RCC_CFGR_PPRE2;
         #elif defined(STM32H7)
         source = HAL_RCC_GetPCLK2Freq();
         clk_div = RCC->D2CFGR & RCC_D2CFGR_D2PPRE2;
@@ -248,7 +254,14 @@ uint32_t timer_get_source_freq(uint32_t tim_id) {
         clk_div = RCC->CFGR & RCC_CFGR_PPRE2;
         #endif
     } else {
-        // TIM{2,3,4,5,6,7,12,13,14} are on APB1
+		// TIM{2,3,4,5,6,7,12,13,14} are on APB1
+		/*--------------------------------*/
+		/*----Add to support stm32f1------*/
+		/*--------------------------------*/
+		#if defined(STM32F1)
+		source = HAL_RCC_GetPCLK1Freq();
+        clk_div = RCC->CFGR & RCC_CFGR_PPRE1;
+		#else
         source = HAL_RCC_GetPCLK1Freq();
         #if defined(STM32F0)
         clk_div = RCC->CFGR & RCC_CFGR_PPRE;
@@ -257,6 +270,7 @@ uint32_t timer_get_source_freq(uint32_t tim_id) {
         #else
         clk_div = RCC->CFGR & RCC_CFGR_PPRE1;
         #endif
+		#endif
     }
     if (clk_div != 0) {
         // APB prescaler for this timer is > 1
@@ -833,7 +847,14 @@ STATIC mp_obj_t pyb_timer_make_new(const mp_obj_type_t *type, size_t n_args, siz
         memset(tim, 0, sizeof(*tim));
         tim->base.type = &pyb_timer_type;
         tim->tim_id = tim_id;
-        tim->is_32bit = tim_id == 2 || tim_id == 5;
+		/*--------------------------------*/
+		/*----Add to support stm32f1------*/
+		/*--------------------------------*/
+		#if defined(STM32F1)
+        tim->is_32bit = 0;  //stm32f1 no 32 bit timer
+		#else
+		tim->is_32bit = tim_id == 2 || tim_id == 5;
+		#endif
         tim->callback = mp_const_none;
         uint32_t ti = tim_instance_table[tim_id - 1];
         tim->tim.Instance = (TIM_TypeDef*)(ti & 0xffffff00);

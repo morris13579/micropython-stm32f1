@@ -16,4 +16,10 @@ rtc ok
 set freq ok
 
 1.5
-repair pin
+repair pin bug
+
+1.6
+timer pwm
+timer 2,5 bug
+
+
