@@ -30,13 +30,23 @@
 
 MP_WEAK DWORD get_fattime(void) {
     #if MICROPY_HW_ENABLE_RTC
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	RTC_Get();
+	return	((calendar.w_year - 1980) << 25) |  \
+			((calendar.w_month) << 21) | ((calendar.w_date) << 16) | \
+			((calendar.hour) << 11) | ((calendar.min) << 5) | (calendar.sec / 2);
+	#else
     rtc_init_finalise();
     RTC_TimeTypeDef time;
     RTC_DateTypeDef date;
     HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
     return ((2000 + date.Year - 1980) << 25) | ((date.Month) << 21) | ((date.Date) << 16) | ((time.Hours) << 11) | ((time.Minutes) << 5) | (time.Seconds / 2);
-    #else
+    #endif
+	#else
     // Jan 1st, 2018 at midnight. Not sure what timezone.
     return ((2018 - 1980) << 25) | ((1) << 21) | ((1) << 16) | ((0) << 11) | ((0) << 5) | (0 / 2);
     #endif

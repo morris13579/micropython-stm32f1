@@ -45,6 +45,136 @@
 
 RTC_HandleTypeDef RTCHandle;
 
+/*--------------------------------*/
+/*----Add to support stm32f1------*/
+/*--------------------------------*/
+#if defined(STM32F1)
+_calendar_obj calendar;//時鐘結構體 
+
+u8 Is_Leap_Year(u16 year)
+{			  
+	if(year%4==0) //必須能被4整除
+	{ 
+		if(year%100==0) 
+		{ 
+			if(year%400==0)return 1;//如果以00結尾,還要能被400整除 	   
+			else return 0;   
+		}else return 1;   
+	}else return 0;	
+}
+//月份數據表											 
+u8 const table_week[12]={0,3,3,6,1,4,6,2,5,0,3,5}; //月修正數據表	  
+//平年的月份日期表
+const u8 mon_table[12]={31,28,31,30,31,30,31,31,30,31,30,31};
+//獲得現在是星期幾
+//功能描述:輸入公歷日期得到星期(只允許1901-2099年)
+//year,month,day：公歷年月日 
+//返回值：星期號																						 
+u8 RTC_Get_Week(u16 year,u8 month,u8 day)
+{	
+	u16 temp2;
+	u8 yearH,yearL;
+	
+	yearH=year/100;	yearL=year%100; 
+	// 如果為21世紀,年份數加100  
+	if (yearH>19)yearL+=100;
+	// 所過閏年數只算1900年之後的  
+	temp2=yearL+yearL/4;
+	temp2=temp2%7; 
+	temp2=temp2+day+table_week[month-1];
+	if (yearL%4==0&&month<3)temp2--;
+	return(temp2%7);
+}
+
+u8 RTC_Get(void)
+{
+	static u16 daycnt=0;
+	u32 timecount=0; 
+	u32 temp=0;
+	u16 temp1=0;	  
+ 	timecount=RTC->CNTH;//得到計數器中的值(秒鐘數)
+	timecount<<=16;
+	timecount+=RTC->CNTL;			 
+
+ 	temp=timecount/86400;   //得到天數(秒鐘數對應的)
+	if(daycnt!=temp)//超過一天了
+	{	  
+		daycnt=temp;
+		temp1=1970;	//從1970年開始
+		while(temp>=365)
+		{				 
+			if(Is_Leap_Year(temp1))//是閏年
+			{
+				if(temp>=366)temp-=366;//閏年的秒鐘數
+				else break;  
+			}
+			else temp-=365;	  //平年 
+			temp1++;  
+		}   
+		calendar.w_year=temp1;//得到年份
+		temp1=0;
+		while(temp>=28)//超過了一個月
+		{
+			if(Is_Leap_Year(calendar.w_year)&&temp1==1)//當年是不是閏年/2月份
+			{
+				if(temp>=29)temp-=29;//閏年的秒鐘數
+				else break; 
+			}
+			else 
+			{
+				if(temp>=mon_table[temp1])temp-=mon_table[temp1];//平年
+				else break;
+			}
+			temp1++;  
+		}
+		calendar.w_month=temp1+1;	//得到月份
+		calendar.w_date=temp+1;  	//得到日期 
+	}
+	temp=timecount%86400;     		//得到秒鐘數   	   
+	calendar.hour=temp/3600;     	//小時
+	calendar.min=(temp%3600)/60; 	//分鐘	
+	calendar.sec=(temp%3600)%60; 	//秒鐘
+	calendar.week=RTC_Get_Week(calendar.w_year,calendar.w_month,calendar.w_date);//獲取星期   
+	return 0;
+}	 
+
+
+u8 RTC_Set(u16 syear,u8 smon,u8 sday,u8 hour,u8 min,u8 sec)
+{
+	u16 t;
+	u32 seccount=0;
+	
+	if(syear<1970||syear>2099)return 1;	   
+	for(t=1970;t<syear;t++)	//把所有年份的秒鐘相加
+	{
+		if(Is_Leap_Year(t))seccount+=31622400;//閏年的秒鐘數
+		else seccount+=31536000;			  //平年的秒鐘數
+	}
+	smon-=1;
+	for(t=0;t<smon;t++)	   //把前面月份的秒鐘數相加
+	{
+		seccount+=(u32)mon_table[t]*86400;//月份秒鐘數相加
+		if(Is_Leap_Year(syear)&&t==1)seccount+=86400;//閏年2月份增加一天的秒鐘數	   
+	}
+	seccount+=(u32)(sday-1)*86400;//把前面日期的秒鐘數相加 
+	seccount+=(u32)hour*3600;//小時秒鐘數
+    seccount+=(u32)min*60;	 //分鐘秒鐘數
+	seccount+=sec;//最後的秒鐘加上去
+	//設置時鐘
+    RCC->APB1ENR|=1<<28;//使能電源時鐘
+    RCC->APB1ENR|=1<<27;//使能備份時鐘
+	PWR->CR|=1<<8;    //取消備份區寫保護
+	//上面三步是必須的!
+	RTC->CRL|=1<<4;   //允許配置 
+	RTC->CNTL=seccount&0xffff;
+	RTC->CNTH=seccount>>16;
+	RTC->CRL&=~(1<<4);//配置更新
+	while(!(RTC->CRL&(1<<5)));//等待RTC寄存器操作完成 
+	RTC_Get();
+	return 0;	    
+}
+#endif
+
 // rtc_info indicates various things about RTC startup
 // it's a bit of a hack at the moment
 static mp_uint_t rtc_info;
@@ -466,6 +596,14 @@ STATIC HAL_StatusTypeDef PYB_RTC_MspInit_Finalise(RTC_HandleTypeDef *hrtc) {
 
 
 STATIC void RTC_CalendarConfig(void) {
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	RTC_Set(2019,8,12,5,10,0);
+	
+
+	#else
     // set the date to 1st Jan 2015
     RTC_DateTypeDef date;
     date.Year = 15;
@@ -488,12 +626,12 @@ STATIC void RTC_CalendarConfig(void) {
     time.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
     time.StoreOperation = RTC_STOREOPERATION_RESET;
 	#endif
-
+	
     if (HAL_RTC_SetTime(&RTCHandle, &time, RTC_FORMAT_BIN) != HAL_OK) {
         // init error
         return;
     }
-	
+	#endif
 }
 
 /******************************************************************************/
@@ -566,158 +704,7 @@ uint32_t rtc_us_to_subsec(uint32_t us) {
 #define rtc_subsec_to_us
 #endif
 
-/*--------------------------------*/
-/*----Add to support stm32f1------*/
-/*--------------------------------*/
-#if defined(STM32F1)
-typedef uint32_t  u32;
-typedef uint16_t u16;
-typedef uint8_t  u8;
-typedef __IO uint32_t  vu32;
-typedef __IO uint16_t vu16;
-typedef __IO uint8_t  vu8;
-typedef struct 
-{
-	vu8 hour;
-	vu8 min;
-	vu8 sec;			
-	//公歷日月年周
-	vu16 w_year;
-	vu8  w_month;
-	vu8  w_date;
-	vu8  week;	
-}_calendar_obj;			
 
-_calendar_obj calendar;//時鐘結構體 
-
-u8 Is_Leap_Year(u16 year)
-{			  
-	if(year%4==0) //必須能被4整除
-	{ 
-		if(year%100==0) 
-		{ 
-			if(year%400==0)return 1;//如果以00結尾,還要能被400整除 	   
-			else return 0;   
-		}else return 1;   
-	}else return 0;	
-}
-//月份數據表											 
-u8 const table_week[12]={0,3,3,6,1,4,6,2,5,0,3,5}; //月修正數據表	  
-//平年的月份日期表
-const u8 mon_table[12]={31,28,31,30,31,30,31,31,30,31,30,31};
-//獲得現在是星期幾
-//功能描述:輸入公歷日期得到星期(只允許1901-2099年)
-//year,month,day：公歷年月日 
-//返回值：星期號																						 
-u8 RTC_Get_Week(u16 year,u8 month,u8 day)
-{	
-	u16 temp2;
-	u8 yearH,yearL;
-	
-	yearH=year/100;	yearL=year%100; 
-	// 如果為21世紀,年份數加100  
-	if (yearH>19)yearL+=100;
-	// 所過閏年數只算1900年之後的  
-	temp2=yearL+yearL/4;
-	temp2=temp2%7; 
-	temp2=temp2+day+table_week[month-1];
-	if (yearL%4==0&&month<3)temp2--;
-	return(temp2%7);
-}
-
-u8 RTC_Get(void)
-{
-	static u16 daycnt=0;
-	u32 timecount=0; 
-	u32 temp=0;
-	u16 temp1=0;	  
- 	timecount=RTC->CNTH;//得到計數器中的值(秒鐘數)
-	timecount<<=16;
-	timecount+=RTC->CNTL;			 
-
- 	temp=timecount/86400;   //得到天數(秒鐘數對應的)
-	if(daycnt!=temp)//超過一天了
-	{	  
-		daycnt=temp;
-		temp1=1970;	//從1970年開始
-		while(temp>=365)
-		{				 
-			if(Is_Leap_Year(temp1))//是閏年
-			{
-				if(temp>=366)temp-=366;//閏年的秒鐘數
-				else break;  
-			}
-			else temp-=365;	  //平年 
-			temp1++;  
-		}   
-		calendar.w_year=temp1;//得到年份
-		temp1=0;
-		while(temp>=28)//超過了一個月
-		{
-			if(Is_Leap_Year(calendar.w_year)&&temp1==1)//當年是不是閏年/2月份
-			{
-				if(temp>=29)temp-=29;//閏年的秒鐘數
-				else break; 
-			}
-			else 
-			{
-				if(temp>=mon_table[temp1])temp-=mon_table[temp1];//平年
-				else break;
-			}
-			temp1++;  
-		}
-		calendar.w_month=temp1+1;	//得到月份
-		calendar.w_date=temp+1;  	//得到日期 
-	}
-	temp=timecount%86400;     		//得到秒鐘數   	   
-	calendar.hour=temp/3600;     	//小時
-	calendar.min=(temp%3600)/60; 	//分鐘	
-	calendar.sec=(temp%3600)%60; 	//秒鐘
-	calendar.week=RTC_Get_Week(calendar.w_year,calendar.w_month,calendar.w_date);//獲取星期   
-	return 0;
-}	 
-
-
-u8 RTC_Set(u16 syear,u8 smon,u8 sday,u8 hour,u8 min,u8 sec)
-{
-	u16 t;
-	u32 seccount=0;
-	
-	if(syear<1970||syear>2099)return 1;	   
-	for(t=1970;t<syear;t++)	//把所有年份的秒鐘相加
-	{
-		if(Is_Leap_Year(t))seccount+=31622400;//閏年的秒鐘數
-		else seccount+=31536000;			  //平年的秒鐘數
-	}
-	smon-=1;
-	for(t=0;t<smon;t++)	   //把前面月份的秒鐘數相加
-	{
-		seccount+=(u32)mon_table[t]*86400;//月份秒鐘數相加
-		if(Is_Leap_Year(syear)&&t==1)seccount+=86400;//閏年2月份增加一天的秒鐘數	   
-	}
-	seccount+=(u32)(sday-1)*86400;//把前面日期的秒鐘數相加 
-	seccount+=(u32)hour*3600;//小時秒鐘數
-    seccount+=(u32)min*60;	 //分鐘秒鐘數
-	seccount+=sec;//最後的秒鐘加上去
-	
-
-
-	//設置時鐘
-    RCC->APB1ENR|=1<<28;//使能電源時鐘
-    RCC->APB1ENR|=1<<27;//使能備份時鐘
-	PWR->CR|=1<<8;    //取消備份區寫保護
-	//上面三步是必須的!
-	RTC->CRL|=1<<4;   //允許配置 
-	RTC->CNTL=seccount&0xffff;
-	RTC->CNTH=seccount>>16;
-	RTC->CRL&=~(1<<4);//配置更新
-	while(!(RTC->CRL&(1<<5)));//等待RTC寄存器操作完成 
-	RTC_Get();
-	return 0;	    
-}
-
-
-#endif
 mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
     rtc_init_finalise();
 	/*--------------------------------*/

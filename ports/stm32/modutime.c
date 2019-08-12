@@ -54,6 +54,45 @@
 /// weekday is 0-6 for Mon-Sun.
 /// yearday is 1-366
 STATIC mp_obj_t time_localtime(size_t n_args, const mp_obj_t *args) {
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	if (n_args == 0 || args[0] == mp_const_none) {
+		// get date and time
+		// note: need to call get time then get date to correctly access the registers
+		rtc_init_finalise();
+		RTC_Get();
+		mp_obj_t tuple[8] = {
+			mp_obj_new_int(calendar.w_year),
+			mp_obj_new_int(calendar.w_month),
+			mp_obj_new_int(calendar.w_date),
+			mp_obj_new_int(calendar.hour),
+			mp_obj_new_int(calendar.min),
+			mp_obj_new_int(calendar.sec),
+			mp_obj_new_int(calendar.week),
+			mp_obj_new_int(timeutils_year_day(calendar.w_year, calendar.w_month, calendar.w_date)),
+		};
+		return mp_obj_new_tuple(8, tuple);
+    } else {
+        mp_int_t seconds = mp_obj_get_int(args[0]);
+        timeutils_struct_time_t tm;
+        timeutils_seconds_since_2000_to_struct_time(seconds, &tm);
+        mp_obj_t tuple[8] = {
+            tuple[0] = mp_obj_new_int(tm.tm_year),
+            tuple[1] = mp_obj_new_int(tm.tm_mon),
+            tuple[2] = mp_obj_new_int(tm.tm_mday),
+            tuple[3] = mp_obj_new_int(tm.tm_hour),
+            tuple[4] = mp_obj_new_int(tm.tm_min),
+            tuple[5] = mp_obj_new_int(tm.tm_sec),
+            tuple[6] = mp_obj_new_int(tm.tm_wday),
+            tuple[7] = mp_obj_new_int(tm.tm_yday),
+        };
+        return mp_obj_new_tuple(8, tuple);
+    }
+	
+	#else
+	
     if (n_args == 0 || args[0] == mp_const_none) {
         // get current date and time
         // note: need to call get time then get date to correctly access the registers
@@ -89,6 +128,7 @@ STATIC mp_obj_t time_localtime(size_t n_args, const mp_obj_t *args) {
         };
         return mp_obj_new_tuple(8, tuple);
     }
+	#endif
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(time_localtime_obj, 0, 1, time_localtime);
 
@@ -120,12 +160,21 @@ MP_DEFINE_CONST_FUN_OBJ_1(time_mktime_obj, time_mktime);
 STATIC mp_obj_t time_time(void) {
     // get date and time
     // note: need to call get time then get date to correctly access the registers
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	rtc_init_finalise();
+	RTC_Get();
+	return mp_obj_new_int(timeutils_seconds_since_2000(calendar.w_year, calendar.w_month, calendar.w_date, calendar.hour, calendar.min, calendar.sec));
+	#else
     rtc_init_finalise();
     RTC_DateTypeDef date;
     RTC_TimeTypeDef time;
     HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
     return mp_obj_new_int(timeutils_seconds_since_2000(2000 + date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds));
+	#endif
 }
 MP_DEFINE_CONST_FUN_OBJ_0(time_time_obj, time_time);
 

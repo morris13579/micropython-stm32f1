@@ -34,7 +34,8 @@ i2c ok not test
 1.9
 repair flash 
 
-
+2.0
+repair utime localtime 
 
 
 

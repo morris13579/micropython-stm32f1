@@ -34,4 +34,34 @@ void rtc_init_finalise(void);
 
 mp_obj_t pyb_rtc_wakeup(size_t n_args, const mp_obj_t *args);
 
+
+/*--------------------------------*/
+/*----Add to support stm32f1------*/
+/*--------------------------------*/
+#if defined(STM32F1)
+typedef uint32_t  u32;
+typedef uint16_t u16;
+typedef uint8_t  u8;
+typedef __IO uint32_t  vu32;
+typedef __IO uint16_t vu16;
+typedef __IO uint8_t  vu8;
+
+typedef struct 
+{
+	vu8 hour;
+	vu8 min;
+	vu8 sec;			
+	//公歷日月年周
+	vu16 w_year;
+	vu8  w_month;
+	vu8  w_date;
+	vu8  week;	
+}_calendar_obj;			
+
+
+extern _calendar_obj calendar;//時鐘結構體 
+u8 RTC_Get(void);
+u8 RTC_Set(u16 syear,u8 smon,u8 sday,u8 hour,u8 min,u8 sec);
+#endif
+
 #endif // MICROPY_INCLUDED_STM32_RTC_H
