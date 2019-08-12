@@ -21,6 +21,6 @@ extint ok
 pin ok  
 uart ok  
 spi ok  
-can ok not test  
+can not test  
 i2c not test  
 

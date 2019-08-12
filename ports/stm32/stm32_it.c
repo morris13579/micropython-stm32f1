@@ -358,12 +358,17 @@ STATIC void OTG_CMD_WKUP_Handler(PCD_HandleTypeDef *pcd_handle) {
     while (__HAL_RCC_GET_SYSCLK_SOURCE() != RCC_CFGR_SWS_PLL)
     {}
     #endif
-
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if !defined(STM32F1)
     /* ungate PHY clock */
      __HAL_PCD_UNGATE_PHYCLOCK(pcd_handle);
+	 #endif
   }
 
 }
+
 #endif
 
 #if MICROPY_HW_USB_FS
@@ -373,14 +378,18 @@ STATIC void OTG_CMD_WKUP_Handler(PCD_HandleTypeDef *pcd_handle) {
   * @retval None
   */
 void OTG_FS_WKUP_IRQHandler(void) {
-    IRQ_ENTER(OTG_FS_WKUP_IRQn);
+	IRQ_ENTER(OTG_FS_WKUP_IRQn);
 
-  OTG_CMD_WKUP_Handler(&pcd_fs_handle);
-
-  /* Clear EXTI pending Bit*/
-  __HAL_USB_FS_EXTI_CLEAR_FLAG();
-
-    IRQ_EXIT(OTG_FS_WKUP_IRQn);
+	OTG_CMD_WKUP_Handler(&pcd_fs_handle);
+	/* Clear EXTI pending Bit*/
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if !defined(STM32F1)
+	/* ungate PHY clock */
+	__HAL_USB_FS_EXTI_CLEAR_FLAG();
+	#endif
+	IRQ_EXIT(OTG_FS_WKUP_IRQn);
 }
 #endif
 

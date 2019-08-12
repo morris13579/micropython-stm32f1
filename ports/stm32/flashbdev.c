@@ -53,24 +53,18 @@
 #define FLASH_MEM_SEG2_NUM_BLOCKS (128) // sector 11: 128k
 #endif
 
-
 /*--------------------------------*/
 /*----Add to support stm32f1------*/
 /*--------------------------------*/
-#elif defined(STM32F103xE)
+#elif defined(STM32F1)
 
-// The STM32F103xE doesn't have CCRAM, so we use the 64K SRAM2 for this, although
-// actual location and size is defined by the linker script.
+STATIC byte flash_cache_mem[2048] __attribute__((aligned(4))); // 16k
+#define flash_start_k				300
+#define CACHE_MEM_START_ADDR		(&flash_cache_mem[0])
+#define FLASH_SECTOR_SIZE_MAX		0x800 //2048 2k
+#define FLASH_MEM_SEG1_START_ADDR	0x8000000 + flash_start_k * 1024
+#define FLASH_MEM_SEG1_NUM_BLOCKS	(512 - flash_start_k) * 1024 / FLASH_SECTOR_SIZE_MAX
 
-extern uint8_t _flash_fs_start;
-extern uint8_t _flash_fs_end;
-extern uint8_t _ram_fs_cache_start[]; // size determined by linker file
-extern uint8_t _ram_fs_cache_end[];
-
-#define CACHE_MEM_START_ADDR 0x20000000
-#define FLASH_SECTOR_SIZE_MAX 2048 // 2k max
-#define FLASH_MEM_SEG1_START_ADDR 0x80000000
-#define FLASH_MEM_SEG1_NUM_BLOCKS 2048
 
 
 #elif defined(STM32F401xE) || defined(STM32F411xE) || defined(STM32F446xx)

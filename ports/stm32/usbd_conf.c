@@ -54,6 +54,47 @@ PCD_HandleTypeDef pcd_hs_handle;
   * @retval None
   */
 void HAL_PCD_MspInit(PCD_HandleTypeDef *hpcd) {
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	if (hpcd->Instance == USB) {
+		mp_hal_pin_config(pin_A11, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, 0);
+		mp_hal_pin_config_speed(pin_A11, GPIO_SPEED_FREQ_HIGH);
+		mp_hal_pin_config(pin_A12, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, 0);
+		mp_hal_pin_config_speed(pin_A12, GPIO_SPEED_FREQ_HIGH);
+
+		#if defined(MICROPY_HW_USB_VBUS_DETECT_PIN)
+		// USB VBUS detect pin is always A9
+		mp_hal_pin_config(MICROPY_HW_USB_VBUS_DETECT_PIN, MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0);
+		#endif
+
+		#if defined(MICROPY_HW_USB_OTG_ID_PIN)
+		// USB ID pin is always A10
+		mp_hal_pin_config(MICROPY_HW_USB_OTG_ID_PIN, MP_HAL_PIN_MODE_ALT_OPEN_DRAIN, MP_HAL_PIN_PULL_UP, otg_alt);
+		#endif
+
+		RCC_PeriphCLKInitTypeDef USBClkInit;
+
+		USBClkInit.PeriphClockSelection=RCC_PERIPHCLK_USB; 		//USB外設時鐘
+		USBClkInit.UsbClockSelection=RCC_USBCLKSOURCE_PLL_DIV1_5;
+		HAL_RCCEx_PeriphCLKConfig(&USBClkInit);//USBclk=PLLclk/1.5=48Mhz	
+		
+		__HAL_RCC_USB_CLK_ENABLE();	//USB時鐘使能	
+
+
+			/* Configure the EXTI line 18 connected internally to the USB IP */
+		__HAL_USB_WAKEUP_EXTI_CLEAR_FLAG();			//清除USB喚醒中斷掛起位
+												  
+		__HAL_USB_WAKEUP_EXTI_ENABLE_RISING_EDGE();	//上升沿
+		__HAL_USB_WAKEUP_EXTI_ENABLE_IT();			//  開啟線18上的中斷 
+
+		/* Enable the USB interrupt */
+		NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, IRQ_PRI_OTG_FS);
+		HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+	}
+	#else
+
     if (hpcd->Instance == USB_OTG_FS) {
         #if defined(STM32H7)
         const uint32_t otg_alt = GPIO_AF10_OTG1_FS;
@@ -166,6 +207,9 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef *hpcd) {
         HAL_NVIC_EnableIRQ(OTG_HS_IRQn);
     }
     #endif // MICROPY_HW_USB_HS
+
+	#endif
+	
 }
 
 /**
@@ -174,6 +218,16 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef *hpcd) {
   * @retval None
   */
 void HAL_PCD_MspDeInit(PCD_HandleTypeDef *hpcd) {
+	
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	if (hpcd->Instance == USB) {
+        /* Disable USB FS Clocks */
+        __HAL_RCC_USB_CLK_DISABLE();
+    }
+	#else
     if (hpcd->Instance == USB_OTG_FS) {
         /* Disable USB FS Clocks */
         __USB_OTG_FS_CLK_DISABLE();
@@ -186,6 +240,7 @@ void HAL_PCD_MspDeInit(PCD_HandleTypeDef *hpcd) {
         __SYSCFG_CLK_DISABLE();
     }
     #endif
+	#endif
 }
 
 /*******************************************************************************
@@ -330,6 +385,61 @@ void HAL_PCD_DisconnectCallback(PCD_HandleTypeDef *hpcd) {
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev, int high_speed) {
+	
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+		// Set LL Driver parameters
+        pcd_fs_handle.Instance = USB;
+        #if MICROPY_HW_USB_ENABLE_CDC2
+        pcd_fs_handle.Init.dev_endpoints = 6;
+        #else
+        pcd_fs_handle.Init.dev_endpoints = 4;
+        #endif
+        //pcd_fs_handle.Init.use_dedicated_ep1 = 0;
+        pcd_fs_handle.Init.ep0_mps = 0x40;
+        //pcd_fs_handle.Init.dma_enable = 0;
+        pcd_fs_handle.Init.low_power_enable = 0;
+        pcd_fs_handle.Init.phy_itface = PCD_PHY_EMBEDDED;
+        pcd_fs_handle.Init.Sof_enable = 0;
+        pcd_fs_handle.Init.speed = PCD_SPEED_FULL;
+        #if defined(STM32L4)
+        pcd_fs_handle.Init.lpm_enable = DISABLE;
+        pcd_fs_handle.Init.battery_charging_enable = DISABLE;
+        #endif
+        #if !defined(MICROPY_HW_USB_VBUS_DETECT_PIN)
+        //pcd_fs_handle.Init.vbus_sensing_enable = 0; // No VBUS Sensing on USB0
+        #else
+        pcd_fs_handle.Init.vbus_sensing_enable = 1;
+        #endif
+
+        // Link The driver to the stack
+        pcd_fs_handle.pData = pdev;
+        pdev->pData = &pcd_fs_handle;
+
+        // Initialize LL Driver
+        HAL_PCD_Init(&pcd_fs_handle);
+
+        // We have 320 32-bit words in total to use here
+        #if MICROPY_HW_USB_ENABLE_CDC2
+        HAL_PCD_SetRxFiFo(&pcd_fs_handle, 128);
+        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 0, 32); // EP0
+        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 1, 64); // MSC / HID
+        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 2, 16); // CDC CMD
+        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 3, 32); // CDC DATA
+        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 4, 16); // CDC2 CMD
+        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 5, 32); // CDC2 DATA
+        #else
+        //HAL_PCD_SetRxFiFo(&pcd_fs_handle, 128);
+        //HAL_PCD_SetTxFiFo(&pcd_fs_handle, 0, 32); // EP0
+        //HAL_PCD_SetTxFiFo(&pcd_fs_handle, 1, 64); // MSC / HID
+        //HAL_PCD_SetTxFiFo(&pcd_fs_handle, 2, 32); // CDC CMD
+        //HAL_PCD_SetTxFiFo(&pcd_fs_handle, 3, 64); // CDC DATA
+        #endif
+	
+		return USBD_OK;
+	#else
     #if MICROPY_HW_USB_FS
     if (pdev->id ==  USB_PHY_FS_ID) {
         // Set LL Driver parameters
@@ -442,6 +552,7 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev, int high_speed) {
     #endif  // MICROPY_HW_USB_HS
 
     return USBD_OK;
+	#endif
 }
 
 /**

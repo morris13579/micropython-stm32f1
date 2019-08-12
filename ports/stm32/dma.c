@@ -205,6 +205,12 @@ const dma_descr_t dma_DAC_2_TX = { DMA2_Channel4, HAL_DMA1, dma_id_10, &dma_init
 const dma_descr_t dma_SPI_1_RX = { DMA1_Channel2, HAL_DMA1, dma_id_1, &dma_init_struct_spi_i2c};
 const dma_descr_t dma_SPI_1_TX = { DMA1_Channel3, HAL_DMA1, dma_id_2, &dma_init_struct_spi_i2c};
 
+const dma_descr_t dma_SPI_2_TX = { DMA1_Channel5, HAL_DMA1, dma_id_4, &dma_init_struct_spi_i2c};
+const dma_descr_t dma_SPI_2_RX = { DMA1_Channel4, HAL_DMA1, dma_id_3, &dma_init_struct_spi_i2c};
+
+const dma_descr_t dma_SPI_3_RX = { DMA2_Channel1, HAL_DMA1, dma_id_7, &dma_init_struct_spi_i2c};
+const dma_descr_t dma_SPI_3_TX = { DMA2_Channel2, HAL_DMA1, dma_id_8, &dma_init_struct_spi_i2c};
+
 const dma_descr_t dma_I2C_1_TX = { DMA1_Channel6, HAL_DMA1, dma_id_5,   &dma_init_struct_spi_i2c };
 const dma_descr_t dma_I2C_2_TX = { DMA1_Channel4, HAL_DMA1, dma_id_3,   &dma_init_struct_spi_i2c };
 const dma_descr_t dma_I2C_1_RX = { DMA1_Channel7, HAL_DMA1, dma_id_6,   &dma_init_struct_spi_i2c };
@@ -214,22 +220,7 @@ const dma_descr_t dma_I2C_2_RX = { DMA1_Channel5, HAL_DMA1, dma_id_4,   &dma_ini
 const dma_descr_t dma_SDIO_0   = { DMA2_Channel4, HAL_DMA1, dma_id_10,  &dma_init_struct_sdio };
 #endif
 
-//有問題
-const dma_descr_t dma_SPI_2_TX = { DMA1_Channel5, HAL_DMA1, dma_id_4, &dma_init_struct_spi_i2c};
-const dma_descr_t dma_SPI_2_RX = { DMA1_Channel6, HAL_DMA1, dma_id_5, &dma_init_struct_spi_i2c};
 
-/*
-const dma_descr_t dma_SPI_2_TX = { DMA1_Channel5, HAL_DMA1, dma_id_4, &dma_init_struct_spi_i2c};
-const dma_descr_t dma_SPI_2_RX = { DMA1_Channel6, HAL_DMA1, dma_id_5, &dma_init_struct_spi_i2c};
-const dma_descr_t dma_SPI_1_RX = { DMA2_Channel3, HAL_DMA1, dma_id_9, &dma_init_struct_spi_i2c};
-const dma_descr_t dma_SPI_1_TX = { DMA2_Channel4, HAL_DMA1, dma_id_10, &dma_init_struct_spi_i2c};
-
-
-const dma_descr_t dma_I2C_1_TX = { DMA1_Channel5, HAL_DMA1, dma_id_7,   &dma_init_struct_spi_i2c };
-const dma_descr_t dma_I2C_2_TX = { DMA1_Channel5, HAL_DMA1, dma_id_7,   &dma_init_struct_spi_i2c };
-const dma_descr_t dma_I2C_1_RX = { DMA1_Channel5, HAL_DMA1, dma_id_0,   &dma_init_struct_spi_i2c };
-const dma_descr_t dma_I2C_2_RX = { DMA1_Channel5, HAL_DMA1, dma_id_2,   &dma_init_struct_spi_i2c };
-*/
 
 static const uint8_t dma_irqn[NSTREAM] = {
     DMA1_Channel1_IRQn ,
