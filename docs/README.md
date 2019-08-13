@@ -22,6 +22,7 @@ pin ok
 uart ok  
 spi ok  
 i2c ok  
+sdcard ok
 can not test  
 
 目前問題  

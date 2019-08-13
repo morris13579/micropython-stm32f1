@@ -44,6 +44,8 @@ repair can't find timer 8 bug
 2.2
 sdcard ok
 
+2.3
+pin read mode bug
 
 
 

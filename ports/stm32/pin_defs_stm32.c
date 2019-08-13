@@ -19,7 +19,7 @@ uint32_t pin_get_mode(const pin_obj_t *pin) {
 	}
 	else 
 	{
-		mode = (gpio->CRH >> (pin_name * 4 ) ) & 3 ;
+		mode = (gpio->CRH >> ( (pin_name - 8) * 4 ) ) & 3 ;
 	}
 	if (mode > 0)
 	{
@@ -29,7 +29,7 @@ uint32_t pin_get_mode(const pin_obj_t *pin) {
 		}
 		else 
 		{
-			mode = (gpio->CRH >> (pin_name * 4 + 2) ) & 3 ;
+			mode = (gpio->CRH >> ( (pin_name - 8) * 4 + 2) ) & 3 ;
 		}
 		if     (mode == 0) mode = GPIO_MODE_OUTPUT_PP;
 		else if(mode == 1) mode = GPIO_MODE_OUTPUT_OD;
@@ -45,7 +45,7 @@ uint32_t pin_get_mode(const pin_obj_t *pin) {
 		}
 		else 
 		{
-			pull = (gpio->CRH >> (pin_name * 4 + 2) ) & 3 ;
+			pull = (gpio->CRH >> ( (pin_name - 8) * 4 + 2) ) & 3 ;
 		}
 		if (pull == 0) 
 			mode = GPIO_MODE_ANALOG;
@@ -83,7 +83,7 @@ uint32_t pin_get_pull(const pin_obj_t *pin) {
 	}
 	else 
 	{
-		pull = (gpio->CRH >> (pin_name * 4 + 2) ) & 3 ;
+		pull = (gpio->CRH >> ( (pin_name - 8) * 4 + 2) ) & 3 ;
 	}
 	if(pull == 0) pull = GPIO_NOPULL;
 	if(pull == 1) pull = GPIO_NOPULL;
