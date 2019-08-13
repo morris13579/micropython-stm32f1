@@ -195,29 +195,31 @@ static const DMA_InitTypeDef dma_init_struct_dcmi = {
 #define DMA1_ENABLE_MASK (0x007f) // Bits in dma_enable_mask corresponding to DMA1 (7 channels)
 #define DMA2_ENABLE_MASK (0x0f80) // Bits in dma_enable_mask corresponding to DMA2 (only 5 channels)
 
-#define HAL_DMA1 0 
+#define NOT_USE 0 
 //有問題
 // DMA1 streams
 #if MICROPY_HW_ENABLE_DAC
-const dma_descr_t dma_DAC_1_TX = { DMA2_Channel3, HAL_DMA1, dma_id_9, &dma_init_struct_dac };
-const dma_descr_t dma_DAC_2_TX = { DMA2_Channel4, HAL_DMA1, dma_id_10, &dma_init_struct_dac };
+const dma_descr_t dma_DAC_1_TX = { DMA2_Channel3, NOT_USE, dma_id_9, &dma_init_struct_dac };
+const dma_descr_t dma_DAC_2_TX = { DMA2_Channel4, NOT_USE, dma_id_10, &dma_init_struct_dac };
 #endif
-const dma_descr_t dma_SPI_1_RX = { DMA1_Channel2, HAL_DMA1, dma_id_1, &dma_init_struct_spi_i2c};
-const dma_descr_t dma_SPI_1_TX = { DMA1_Channel3, HAL_DMA1, dma_id_2, &dma_init_struct_spi_i2c};
+const dma_descr_t dma_SPI_1_RX = { DMA1_Channel2, NOT_USE, dma_id_1, &dma_init_struct_spi_i2c};
+const dma_descr_t dma_SPI_1_TX = { DMA1_Channel3, NOT_USE, dma_id_2, &dma_init_struct_spi_i2c};
 
-const dma_descr_t dma_SPI_2_TX = { DMA1_Channel5, HAL_DMA1, dma_id_4, &dma_init_struct_spi_i2c};
-const dma_descr_t dma_SPI_2_RX = { DMA1_Channel4, HAL_DMA1, dma_id_3, &dma_init_struct_spi_i2c};
+const dma_descr_t dma_SPI_2_TX = { DMA1_Channel5, NOT_USE, dma_id_4, &dma_init_struct_spi_i2c};
+const dma_descr_t dma_SPI_2_RX = { DMA1_Channel4, NOT_USE, dma_id_3, &dma_init_struct_spi_i2c};
 
-const dma_descr_t dma_SPI_3_RX = { DMA2_Channel1, HAL_DMA1, dma_id_7, &dma_init_struct_spi_i2c};
-const dma_descr_t dma_SPI_3_TX = { DMA2_Channel2, HAL_DMA1, dma_id_8, &dma_init_struct_spi_i2c};
+const dma_descr_t dma_SPI_3_RX = { DMA2_Channel1, NOT_USE, dma_id_7, &dma_init_struct_spi_i2c};
+const dma_descr_t dma_SPI_3_TX = { DMA2_Channel2, NOT_USE, dma_id_8, &dma_init_struct_spi_i2c};
 
-const dma_descr_t dma_I2C_1_TX = { DMA1_Channel6, HAL_DMA1, dma_id_5,   &dma_init_struct_spi_i2c };
-const dma_descr_t dma_I2C_2_TX = { DMA1_Channel4, HAL_DMA1, dma_id_3,   &dma_init_struct_spi_i2c };
-const dma_descr_t dma_I2C_1_RX = { DMA1_Channel7, HAL_DMA1, dma_id_6,   &dma_init_struct_spi_i2c };
-const dma_descr_t dma_I2C_2_RX = { DMA1_Channel5, HAL_DMA1, dma_id_4,   &dma_init_struct_spi_i2c };
+
+const dma_descr_t dma_I2C_1_RX = { DMA1_Channel7, NOT_USE, dma_id_6,   &dma_init_struct_spi_i2c };
+const dma_descr_t dma_I2C_1_TX = { DMA1_Channel6, NOT_USE, dma_id_5,   &dma_init_struct_spi_i2c };
+const dma_descr_t dma_I2C_2_RX = { DMA1_Channel5, NOT_USE + 1, dma_id_4,   &dma_init_struct_spi_i2c };
+const dma_descr_t dma_I2C_2_TX = { DMA1_Channel4, NOT_USE + 1, dma_id_3,   &dma_init_struct_spi_i2c };
+
 
 #if ENABLE_SDIO
-const dma_descr_t dma_SDIO_0   = { DMA2_Channel4, HAL_DMA1, dma_id_10,  &dma_init_struct_sdio };
+const dma_descr_t dma_SDIO_0   = { DMA2_Channel4, NOT_USE + 1, dma_id_10,  &dma_init_struct_sdio };
 #endif
 
 

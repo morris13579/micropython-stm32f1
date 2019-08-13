@@ -37,6 +37,10 @@ repair flash
 2.0
 repair utime localtime 
 
+2.1
+repair adc read temp,vref
+repair can't find timer 8 bug
+
 
 
 

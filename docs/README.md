@@ -21,6 +21,8 @@ extint ok
 pin ok  
 uart ok  
 spi ok  
+i2c ok  
 can not test  
-i2c not test  
 
+目前問題  
+i2c 使用dma會重啟  

@@ -50,6 +50,7 @@
 ///     val = adc.read_core_vbat()      # read MCU VBAT
 ///     val = adc.read_core_vref()      # read MCU VREF
 
+
 /* ADC defintions */
 
 #if defined(STM32H7)
@@ -273,11 +274,11 @@ STATIC void adcx_init_periph(ADC_HandleTypeDef *adch, uint32_t resolution) {
 		HAL_RCCEx_PeriphCLKConfig(&ADC_CLKInit);					//設置ADC時鐘
 		
 		adch->Instance					=	ADC1;
-		adch->Init.DataAlign				=	ADC_DATAALIGN_RIGHT;
+		adch->Init.DataAlign			=	ADC_DATAALIGN_RIGHT;
 		adch->Init.ScanConvMode			=	DISABLE;
 		adch->Init.ContinuousConvMode	=	DISABLE;
 		adch->Init.NbrOfConversion		=	1;
-		adch->Init.DiscontinuousConvMode	=	DISABLE;
+		adch->Init.DiscontinuousConvMode=	DISABLE;
 		adch->Init.NbrOfDiscConversion	=	0;
 		adch->Init.ExternalTrigConv		=	ADC_SOFTWARE_START;
 		HAL_ADC_Init(adch);
@@ -339,7 +340,6 @@ STATIC void adcx_init_periph(ADC_HandleTypeDef *adch, uint32_t resolution) {
 }
 
 STATIC void adc_init_single(pyb_obj_adc_t *adc_obj) {
-	
 	/*--------------------------------*/
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
@@ -450,6 +450,19 @@ STATIC uint32_t adc_config_and_read_channel(ADC_HandleTypeDef *adcHandle, uint32
         ADC->CCR &= ~ADC_CCR_VBATE;
     }
     #endif
+	
+	
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	//開啟或温度傳感器和VREFIN
+    if (channel == ADC_CHANNEL_TEMPSENSOR || channel == ADC_CHANNEL_VREFINT) {
+        adcHandle->Instance->CR2 |= ADC_CR2_TSVREFE;
+    }
+    #endif
+	
+	
 
     return raw_value;
 }
@@ -641,9 +654,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(adc_read_timed_obj, adc_read_timed);
 //
 // This function should not allocate any heap memory.
 STATIC mp_obj_t adc_read_timed_multi(mp_obj_t adc_array_in, mp_obj_t buf_array_in, mp_obj_t tim_in) {
-	
-	
-	
 	/*--------------------------------*/
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
@@ -868,8 +878,18 @@ STATIC volatile float adc_refcor = 1.0f;
 
 float adc_read_core_temp_float(ADC_HandleTypeDef *adcHandle) {
     int32_t raw_value = adc_config_and_read_ref(adcHandle, ADC_CHANNEL_TEMPSENSOR);
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+    #if defined(STM32F1)
+	float temperate;
+	temperate = (float)raw_value*(3.3/4096);				//電壓值 
+	temperate = (float)(1.43-temperate)/0.0043+25;			//轉換為溫度值
+	return temperate;
+	#else
     float core_temp_avg_slope = (*ADC_CAL2 - *ADC_CAL1) / 80.0;
     return (((float)raw_value * adc_refcor - *ADC_CAL1) / core_temp_avg_slope) + 30.0f;
+	#endif
 }
 
 float adc_read_core_vbat(ADC_HandleTypeDef *adcHandle) {
@@ -877,6 +897,7 @@ float adc_read_core_vbat(ADC_HandleTypeDef *adcHandle) {
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
     #if defined(STM32F1)
+	nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "STM32F1 not support VBAT"));
 	return 0;
 	#else
     uint32_t raw_value = adc_config_and_read_ref(adcHandle, ADC_CHANNEL_VBAT);
@@ -886,11 +907,18 @@ float adc_read_core_vbat(ADC_HandleTypeDef *adcHandle) {
 
 float adc_read_core_vref(ADC_HandleTypeDef *adcHandle) {
     uint32_t raw_value = adc_config_and_read_ref(adcHandle, ADC_CHANNEL_VREFINT);
-
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+    #if defined(STM32F1)
+	float adc_refcor;
+	adc_refcor = (float)raw_value*(3.3/4096);				//電壓值 
+	return adc_refcor;
+	#else
     // update the reference correction factor
     adc_refcor = ((float)(*VREFIN_CAL)) / ((float)raw_value);
-
     return (*VREFIN_CAL) * ADC_SCALE;
+	#endif
 }
 #endif
 
