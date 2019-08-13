@@ -41,6 +41,9 @@ repair utime localtime
 repair adc read temp,vref
 repair can't find timer 8 bug
 
+2.2
+sdcard ok
+
 
 
 

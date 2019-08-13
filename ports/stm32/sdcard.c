@@ -95,6 +95,24 @@
 #define SDIO_USE_GPDMA                      1
 #endif
 
+
+/*--------------------------------*/
+/*----Add to support stm32f1------*/
+/*--------------------------------*/
+#elif defined(STM32F1)
+
+#define SDMMC_CLK_ENABLE() __HAL_RCC_SDIO_CLK_ENABLE()
+#define SDMMC_CLK_DISABLE() __HAL_RCC_SDIO_CLK_DISABLE()
+#define SDMMC_IRQn SDIO_IRQn
+#define SDMMC_DMA dma_SDIO_0
+#define SDIO_USE_GPDMA 1
+#define STATIC_AF_SDMMC_CK STATIC_AF_SDIO_CK
+#define STATIC_AF_SDMMC_CMD STATIC_AF_SDIO_CMD
+#define STATIC_AF_SDMMC_D0 STATIC_AF_SDIO_D0
+#define STATIC_AF_SDMMC_D1 STATIC_AF_SDIO_D1
+#define STATIC_AF_SDMMC_D2 STATIC_AF_SDIO_D2
+#define STATIC_AF_SDMMC_D3 STATIC_AF_SDIO_D3
+
 #else
 
 // These are definitions for F4 MCUs so there is a common macro across all MCUs.
@@ -160,6 +178,25 @@ void sdcard_init(void) {
     mp_hal_pin_config_alt_static(MICROPY_HW_SDMMC2_D2, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, STATIC_AF_SDMMC2_D2);
     mp_hal_pin_config_alt_static(MICROPY_HW_SDMMC2_D3, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, STATIC_AF_SDMMC2_D3);
     #else
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+    GPIO_InitTypeDef GPIO_Initure;
+    __HAL_RCC_GPIOC_CLK_ENABLE();   //使能GPIOC時鐘
+    __HAL_RCC_GPIOD_CLK_ENABLE();   //使能GPIOD時鐘
+    
+    //PC8,9,10,11,12
+    GPIO_Initure.Pin=GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12;
+    GPIO_Initure.Mode=GPIO_MODE_AF_PP;      //推挽復用
+    GPIO_Initure.Pull=GPIO_PULLUP;          //上拉
+    GPIO_Initure.Speed=GPIO_SPEED_FREQ_HIGH;     //高速
+    HAL_GPIO_Init(GPIOC,&GPIO_Initure);     //初始化
+    
+    //PD2
+    GPIO_Initure.Pin=GPIO_PIN_2;            
+    HAL_GPIO_Init(GPIOD,&GPIO_Initure);     //初始化
+	#else
     // Default SDIO/SDMMC1 config
     mp_hal_pin_config_alt_static(MICROPY_HW_SDMMC_D0, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, STATIC_AF_SDMMC_D0);
     mp_hal_pin_config_alt_static(MICROPY_HW_SDMMC_D1, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, STATIC_AF_SDMMC_D1);
@@ -167,6 +204,7 @@ void sdcard_init(void) {
     mp_hal_pin_config_alt_static(MICROPY_HW_SDMMC_D3, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, STATIC_AF_SDMMC_D3);
     mp_hal_pin_config_alt_static(MICROPY_HW_SDMMC_CK, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, STATIC_AF_SDMMC_CK);
     mp_hal_pin_config_alt_static(MICROPY_HW_SDMMC_CMD, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, STATIC_AF_SDMMC_CMD);
+	#endif
     #endif
 
     // configure the SD card detect pin
@@ -227,7 +265,14 @@ bool sdcard_is_present(void) {
         return false;
     }
     #endif
-    return HAL_GPIO_ReadPin(MICROPY_HW_SDCARD_DETECT_PIN->gpio, MICROPY_HW_SDCARD_DETECT_PIN->pin_mask) == MICROPY_HW_SDCARD_DETECT_PRESENT;
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+    return 1;
+	#else
+	return HAL_GPIO_ReadPin(MICROPY_HW_SDCARD_DETECT_PIN->gpio, MICROPY_HW_SDCARD_DETECT_PIN->pin_mask) == MICROPY_HW_SDCARD_DETECT_PRESENT;
+	#endif
 }
 
 #if MICROPY_HW_ENABLE_SDCARD
@@ -403,8 +448,16 @@ STATIC void sdcard_reset_periph(void) {
     SDIO->DTIMER = 0;
     SDIO->DLEN = 0;
     SDIO->DCTRL = 0;
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	SDIO->ICR = SDIO_STATIC_FLAGS;
+	#else
     SDIO->ICR = SDMMC_STATIC_FLAGS;
+	#endif
 }
+
 
 STATIC HAL_StatusTypeDef sdcard_wait_finished(uint32_t timeout) {
     // Wait for HAL driver to be ready (eg for DMA to finish)
@@ -435,7 +488,7 @@ STATIC HAL_StatusTypeDef sdcard_wait_finished(uint32_t timeout) {
 
     // Wait for SD card to complete the operation
     for (;;) {
-        uint32_t state;
+        uint32_t state = 0;
         #if MICROPY_HW_ENABLE_MMCARD
         MP_STATIC_ASSERT((uint32_t)HAL_SD_CARD_TRANSFER == (uint32_t)HAL_MMC_CARD_TRANSFER);
         MP_STATIC_ASSERT((uint32_t)HAL_SD_CARD_SENDING == (uint32_t)HAL_MMC_CARD_SENDING);
@@ -448,7 +501,6 @@ STATIC HAL_StatusTypeDef sdcard_wait_finished(uint32_t timeout) {
         {
             state = HAL_SD_GetCardState(&sdmmc_handle.sd);
         }
-
         if (state == HAL_SD_CARD_TRANSFER) {
             return HAL_OK;
         }
@@ -458,17 +510,67 @@ STATIC HAL_StatusTypeDef sdcard_wait_finished(uint32_t timeout) {
         if (HAL_GetTick() - start >= timeout) {
             return HAL_TIMEOUT;
         }
+		/*--------------------------------*/
+		/*----Add to support stm32f1------*/
+		/*--------------------------------*/
+		#if !defined(STM32F1)
+		//stm32f1加了會導致程式當掉
         __WFI();
+		#endif
     }
     return HAL_OK;
 }
+
+
+
+///**
+//  * @brief Tx Transfer completed callbacks
+//  * @param hsd: Pointer to SD handle
+//  * @retval None
+//  */
+//void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
+//{
+//	printf("write ok \n");
+//}
+//
+///**
+//  * @brief Rx Transfer completed callbacks
+//  * @param hsd: Pointer SD handle
+//  * @retval None
+//  */
+//void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
+//{
+//	printf("read ok \n");
+//}
+//
+///**
+//  * @brief SD error callbacks
+//  * @param hsd: Pointer SD handle
+//  * @retval None
+//  */
+//void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)
+//{
+//	printf("sdio dma error \n");
+//}
+//
+//
+///**
+//  * @brief  SD DMA transfer complete error Tx callback.
+//  * @param  hdma: pointer to a DMA_HandleTypeDef structure that contains
+//  *                the configuration information for the specified DMA module.
+//  * @retval None
+//  */
+//void HAL_SD_DMA_TxErrorCallback(DMA_HandleTypeDef *hdma)  //write
+//{
+//	printf("write error \n");
+//}
+
 
 mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blocks) {
     // check that SD card is initialised
     if (!(pyb_sdmmc_flags & PYB_SDMMC_FLAG_ACTIVE)) {
         return HAL_ERROR;
     }
-
     HAL_StatusTypeDef err = HAL_OK;
 
     // check that dest pointer is aligned on a 4-byte boundary
@@ -495,6 +597,8 @@ mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blo
 
         #if SDIO_USE_GPDMA
         DMA_HandleTypeDef sd_dma;
+
+		
         dma_init(&sd_dma, &SDMMC_DMA, DMA_PERIPH_TO_MEMORY, &sdmmc_handle);
         #if MICROPY_HW_ENABLE_MMCARD
         if (pyb_sdmmc_flags & PYB_SDMMC_FLAG_MMC) {
@@ -555,7 +659,6 @@ mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blo
         memmove(orig_dest, dest, num_blocks * SDCARD_BLOCK_SIZE);
         memcpy(dest, &saved_word, orig_dest - dest);
     }
-
     return err;
 }
 
@@ -566,7 +669,6 @@ mp_uint_t sdcard_write_blocks(const uint8_t *src, uint32_t block_num, uint32_t n
     }
 
     HAL_StatusTypeDef err = HAL_OK;
-
     // check that src pointer is aligned on a 4-byte boundary
     if (((uint32_t)src & 3) != 0) {
         // pointer is not aligned, so allocate a temporary block to do the write
@@ -644,7 +746,6 @@ mp_uint_t sdcard_write_blocks(const uint8_t *src, uint32_t block_num, uint32_t n
             err = sdcard_wait_finished(60000);
         }
     }
-
     return err;
 }
 
@@ -743,11 +844,12 @@ STATIC mp_obj_t sd_info(mp_obj_t self) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(sd_info_obj, sd_info);
 
+
+
 // now obsolete, kept for backwards compatibility
 STATIC mp_obj_t sd_read(mp_obj_t self, mp_obj_t block_num) {
     uint8_t *dest = m_new(uint8_t, SDCARD_BLOCK_SIZE);
     mp_uint_t ret = sdcard_read_blocks(dest, mp_obj_get_int(block_num), 1);
-
     if (ret != 0) {
         m_del(uint8_t, dest, SDCARD_BLOCK_SIZE);
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_Exception, "sdcard_read_blocks failed [%u]", ret));

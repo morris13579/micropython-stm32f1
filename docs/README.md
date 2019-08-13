@@ -25,4 +25,5 @@ i2c ok
 can not test  
 
 目前問題  
+有些外設使用DMA會有問題  
 i2c 使用dma會重啟  

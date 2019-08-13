@@ -15,7 +15,16 @@
 #define MICROPY_HW_HAS_LCD          (0)
 #define MICROPY_HW_HAS_SWITCH       (1)
 #define MICROPY_HW_HAS_FLASH        (1)
-#define MICROPY_HW_HAS_SDCARD       (1)  //if have sdio
+
+
+#define MICROPY_HW_ENABLE_SDCARD         (1)  //if have sdio
+#define MICROPY_HW_SDCARD_MOUNT_AT_BOOT  (1)  //auto mount sdcard
+// SD card detect switch
+// not use
+#define MICROPY_HW_SDCARD_DETECT_PIN        (pin_A8)
+#define MICROPY_HW_SDCARD_DETECT_PULL       (GPIO_PULLUP)
+#define MICROPY_HW_SDCARD_DETECT_PRESENT    (GPIO_PIN_RESET)
+
 
 #define MICROPY_HW_ENABLE_SERVO     (0)
 #define MICROPY_HW_ENABLE_RNG       (0)
