@@ -107,21 +107,12 @@ int powerctrl_rcc_clock_config_pll(RCC_ClkInitTypeDef *rcc_init, uint32_t sysclk
 
 #endif
 
+#if !(defined(STM32F0) || defined(STM32L4) )
 
 /*--------------------------------*/
 /*----Add to support stm32f1------*/
 /*--------------------------------*/
-#if !(defined(STM32F0) || defined(STM32L4) || !defined(STM32F1) )
-
-
-
-
-/*--------------------------------*/
-/*----Add to support stm32f1------*/
-/*--------------------------------*/
-#if defined(STM32F1)
-	
-#else
+#if !defined(STM32F1)
 STATIC uint32_t calc_ahb_div(uint32_t wanted_div) {
     if (wanted_div <= 1) { return RCC_SYSCLK_DIV1; }
     else if (wanted_div <= 2) { return RCC_SYSCLK_DIV2; }
@@ -143,7 +134,8 @@ STATIC uint32_t calc_apb_div(uint32_t wanted_div) {
 }
 #endif
 
-//#include "stdio.h"
+
+
 int powerctrl_set_sysclk(uint32_t sysclk, uint32_t ahb, uint32_t apb1, uint32_t apb2) {
     // Return straightaway if the clocks are already at the desired frequency
     if (sysclk == HAL_RCC_GetSysClockFreq()

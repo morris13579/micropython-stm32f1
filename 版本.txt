@@ -48,6 +48,9 @@ sdcard ok
 pin read mode bug
 
 
+2.4
+整理
+
 
 
 
