@@ -297,6 +297,11 @@ void DebugMon_Handler(void) {
 /*  file (startup_stm32f4xx.s).                                               */
 /******************************************************************************/
 
+/*--------------------------------*/
+/*----Add to support stm32f1------*/
+/*--------------------------------*/
+#if !defined(STM32F1)  
+
 /**
   * @brief  This function handles USB-On-The-Go FS global interrupt request.
   * @param  None
@@ -358,17 +363,12 @@ STATIC void OTG_CMD_WKUP_Handler(PCD_HandleTypeDef *pcd_handle) {
     while (__HAL_RCC_GET_SYSCLK_SOURCE() != RCC_CFGR_SWS_PLL)
     {}
     #endif
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-	#if !defined(STM32F1)
+
     /* ungate PHY clock */
      __HAL_PCD_UNGATE_PHYCLOCK(pcd_handle);
-	 #endif
   }
 
 }
-
 #endif
 
 #if MICROPY_HW_USB_FS
@@ -378,18 +378,14 @@ STATIC void OTG_CMD_WKUP_Handler(PCD_HandleTypeDef *pcd_handle) {
   * @retval None
   */
 void OTG_FS_WKUP_IRQHandler(void) {
-	IRQ_ENTER(OTG_FS_WKUP_IRQn);
+    IRQ_ENTER(OTG_FS_WKUP_IRQn);
 
-	OTG_CMD_WKUP_Handler(&pcd_fs_handle);
-	/* Clear EXTI pending Bit*/
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-	#if !defined(STM32F1)
-	/* ungate PHY clock */
-	__HAL_USB_FS_EXTI_CLEAR_FLAG();
-	#endif
-	IRQ_EXIT(OTG_FS_WKUP_IRQn);
+  OTG_CMD_WKUP_Handler(&pcd_fs_handle);
+
+  /* Clear EXTI pending Bit*/
+  __HAL_USB_FS_EXTI_CLEAR_FLAG();
+
+    IRQ_EXIT(OTG_FS_WKUP_IRQn);
 }
 #endif
 
@@ -409,6 +405,7 @@ void OTG_HS_WKUP_IRQHandler(void) {
 
     IRQ_EXIT(OTG_HS_WKUP_IRQn);
 }
+#endif
 #endif
 
 /**
@@ -516,20 +513,24 @@ void TAMP_STAMP_IRQHandler(void) {
 #if defined(STM32F1)
 void RTC_IRQHandler(void)
 {		 
-	IRQ_ENTER(RTC_WKUP_IRQn);
-	if( RTC->CRL != RESET)  //秒中斷
+	IRQ_ENTER(RTC_IRQn);
+	if( RTC->CRL & RTC_CRL_SECF )  //秒中斷
 	{
 		RTC->CRL = ~RTC_FLAG_SEC;
 		Handle_EXTI_Irq(EXTI_RTC_WAKEUP); // clear EXTI flag and execute optional callback
 	}	
-	/*
-	if(__HAL_RTC_ALARM_GET_FLAG(&RTC_Handler,RTC_FLAG_SEC)!=RESET)  //鬧鐘中斷
+	
+	if( RTC->CRL & RTC_CRL_ALRF )  //鬧鐘中斷
 	{
-		__HAL_RTC_ALARM_CLEAR_FLAG(&RTC_Handler,RTC_FLAG_ALRAF); 	//清除鬧鐘中斷   
+		RTC->CRL = ~RTC_CRL_ALRF; 	//清除鬧鐘中斷   
+		Handle_EXTI_Irq(EXTI_RTC_ALARM); // clear EXTI flag and execute optional callback
 	}
-	*/
-	//__HAL_RTC_ALARM_CLEAR_FLAG(&RTC_Handler,RTC_FLAG_OW); 		//清除溢出  	 
-	IRQ_EXIT(RTC_WKUP_IRQn);
+	if( RTC->CRL & RTC_CRL_OWF )   //清除溢出 
+	{
+		RTC->CRL = ~RTC_CRL_OWF;
+		//Handle_EXTI_Irq(EXTI_RTC_ALARM); // clear EXTI flag and execute optional callback
+	}
+	IRQ_EXIT(RTC_IRQn);
 }
 #else
 void RTC_WKUP_IRQHandler(void) {
