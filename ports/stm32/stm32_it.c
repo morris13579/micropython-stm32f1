@@ -806,12 +806,43 @@ void UART10_IRQHandler(void) {
 #endif
 
 #endif
-#if defined(MICROPY_HW_CAN1_TX)
-void CAN1_RX0_IRQHandler(void) {
-    IRQ_ENTER(CAN1_RX0_IRQn);
-    can_rx_irq_handler(PYB_CAN_1, CAN_FIFO0);
-    IRQ_EXIT(CAN1_RX0_IRQn);
+
+
+#if defined(STM32F1) & MICROPY_HW_ENABLE_USB
+void USBWakeUp_IRQHandler(void){
+	IRQ_ENTER(USBWakeUp_IRQn);
+	__HAL_USB_WAKEUP_EXTI_CLEAR_FLAG();//清除USB喚醒中斷掛起位
+	IRQ_EXIT(USBWakeUp_IRQn);
 }
+#endif
+
+#if defined(STM32F1) & MICROPY_HW_ENABLE_USB
+void USB_HP_CAN1_TX_IRQHandler(void)
+{
+	IRQ_ENTER(USB_HP_CAN1_TX_IRQn);
+	printf("TX");
+	HAL_PCD_IRQHandler(&pcd_fs_handle);
+	IRQ_EXIT(USB_HP_CAN1_TX_IRQn);
+}
+#endif
+
+/*--------------------------------*/
+/*----Add to support stm32f1------*/
+/*--------------------------------*/
+#if defined(MICROPY_HW_CAN1_TX)
+//#define CAN1_RX0_IRQHandler           USB_LP_CAN1_RX0_IRQHandler
+
+void CAN1_RX0_IRQHandler(void) {
+	#if defined(STM32F1) & MICROPY_HW_ENABLE_USB
+	IRQ_ENTER(USB_LP_CAN1_RX0_IRQn);
+	HAL_PCD_IRQHandler(&pcd_fs_handle);
+	IRQ_EXIT(USB_LP_CAN1_RX0_IRQn);
+	#endif
+    //IRQ_ENTER(CAN1_RX0_IRQn);
+    //can_rx_irq_handler(PYB_CAN_1, CAN_FIFO0);
+    //IRQ_EXIT(CAN1_RX0_IRQn);
+}
+
 
 void CAN1_RX1_IRQHandler(void) {
     IRQ_ENTER(CAN1_RX1_IRQn);

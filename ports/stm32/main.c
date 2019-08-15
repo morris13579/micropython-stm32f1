@@ -104,7 +104,8 @@ void SystemClock_Config(void)
 	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
 	ret=PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
 	if(ret!=HAL_OK) while(1);
-	
+	__HAL_RCC_AFIO_CLK_ENABLE();
+	__HAL_RCC_PWR_CLK_ENABLE();
 }
 #else
 void SystemClock_Config(void);

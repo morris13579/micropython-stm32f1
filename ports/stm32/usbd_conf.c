@@ -44,6 +44,12 @@ PCD_HandleTypeDef pcd_fs_handle;
 PCD_HandleTypeDef pcd_hs_handle;
 #endif
 
+
+#define hpcd_USB_FS pcd_fs_handle 
+
+USBD_StatusTypeDef USBD_Get_USB_Status(HAL_StatusTypeDef hal_status);
+
+
 /*******************************************************************************
                        PCD BSP Routines
 *******************************************************************************/
@@ -54,162 +60,23 @@ PCD_HandleTypeDef pcd_hs_handle;
   * @retval None
   */
 void HAL_PCD_MspInit(PCD_HandleTypeDef *hpcd) {
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-	#if defined(STM32F1)
-	if (hpcd->Instance == USB) {
-		mp_hal_pin_config(pin_A11, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, 0);
-		mp_hal_pin_config_speed(pin_A11, GPIO_SPEED_FREQ_HIGH);
-		mp_hal_pin_config(pin_A12, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, 0);
-		mp_hal_pin_config_speed(pin_A12, GPIO_SPEED_FREQ_HIGH);
+	if(hpcd->Instance==USB)
+	{
+		/* USER CODE BEGIN USB_MspInit 0 */
 
-		#if defined(MICROPY_HW_USB_VBUS_DETECT_PIN)
-		// USB VBUS detect pin is always A9
-		mp_hal_pin_config(MICROPY_HW_USB_VBUS_DETECT_PIN, MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0);
-		#endif
+		/* USER CODE END USB_MspInit 0 */
+		/* Peripheral clock enable */
+		__HAL_RCC_USB_CLK_ENABLE();
 
-		#if defined(MICROPY_HW_USB_OTG_ID_PIN)
-		// USB ID pin is always A10
-		mp_hal_pin_config(MICROPY_HW_USB_OTG_ID_PIN, MP_HAL_PIN_MODE_ALT_OPEN_DRAIN, MP_HAL_PIN_PULL_UP, otg_alt);
-		#endif
-
-		RCC_PeriphCLKInitTypeDef USBClkInit;
-
-		USBClkInit.PeriphClockSelection=RCC_PERIPHCLK_USB; 		//USB外設時鐘
-		USBClkInit.UsbClockSelection=RCC_USBCLKSOURCE_PLL_DIV1_5;
-		HAL_RCCEx_PeriphCLKConfig(&USBClkInit);//USBclk=PLLclk/1.5=48Mhz	
-		
-		__HAL_RCC_USB_CLK_ENABLE();	//USB時鐘使能	
-
-
-			/* Configure the EXTI line 18 connected internally to the USB IP */
-		__HAL_USB_WAKEUP_EXTI_CLEAR_FLAG();			//清除USB喚醒中斷掛起位
-												  
-		__HAL_USB_WAKEUP_EXTI_ENABLE_RISING_EDGE();	//上升沿
-		__HAL_USB_WAKEUP_EXTI_ENABLE_IT();			//  開啟線18上的中斷 
-
-		/* Enable the USB interrupt */
-		NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, IRQ_PRI_OTG_FS);
+		/* Peripheral interrupt init */
+		HAL_NVIC_SetPriority(USB_HP_CAN1_TX_IRQn, 0, 0);
+		HAL_NVIC_EnableIRQ(USB_HP_CAN1_TX_IRQn);
+		HAL_NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, 0, 0);
 		HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+		/* USER CODE BEGIN USB_MspInit 1 */
+
+		/* USER CODE END USB_MspInit 1 */
 	}
-	#else
-
-    if (hpcd->Instance == USB_OTG_FS) {
-        #if defined(STM32H7)
-        const uint32_t otg_alt = GPIO_AF10_OTG1_FS;
-        #else
-        const uint32_t otg_alt = GPIO_AF10_OTG_FS;
-        #endif
-
-        mp_hal_pin_config(pin_A11, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, otg_alt);
-        mp_hal_pin_config_speed(pin_A11, GPIO_SPEED_FREQ_VERY_HIGH);
-        mp_hal_pin_config(pin_A12, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, otg_alt);
-        mp_hal_pin_config_speed(pin_A12, GPIO_SPEED_FREQ_VERY_HIGH);
-
-        #if defined(MICROPY_HW_USB_VBUS_DETECT_PIN)
-        // USB VBUS detect pin is always A9
-        mp_hal_pin_config(MICROPY_HW_USB_VBUS_DETECT_PIN, MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0);
-        #endif
-
-        #if defined(MICROPY_HW_USB_OTG_ID_PIN)
-        // USB ID pin is always A10
-        mp_hal_pin_config(MICROPY_HW_USB_OTG_ID_PIN, MP_HAL_PIN_MODE_ALT_OPEN_DRAIN, MP_HAL_PIN_PULL_UP, otg_alt);
-        #endif
-
-        #if defined(STM32H7)
-        // Keep USB clock running during sleep or else __WFI() will disable the USB
-        __HAL_RCC_USB2_OTG_FS_CLK_SLEEP_ENABLE();
-        __HAL_RCC_USB2_OTG_FS_ULPI_CLK_SLEEP_DISABLE();
-        #endif
-
-        // Enable USB FS Clocks
-        __USB_OTG_FS_CLK_ENABLE();
-
-        #if defined(STM32L4)
-        // Enable VDDUSB
-        if (__HAL_RCC_PWR_IS_CLK_DISABLED()) {
-            __HAL_RCC_PWR_CLK_ENABLE();
-            HAL_PWREx_EnableVddUSB();
-            __HAL_RCC_PWR_CLK_DISABLE();
-        } else {
-            HAL_PWREx_EnableVddUSB();
-        }
-        #endif
-
-        // Configure and enable USB FS interrupt
-        NVIC_SetPriority(OTG_FS_IRQn, IRQ_PRI_OTG_FS);
-        HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
-    }
-    #if MICROPY_HW_USB_HS
-    else if (hpcd->Instance == USB_OTG_HS) {
-        #if MICROPY_HW_USB_HS_IN_FS
-
-        #if defined(STM32H7)
-        const uint32_t otg_alt = GPIO_AF12_OTG2_FS;
-        #else
-        const uint32_t otg_alt = GPIO_AF12_OTG_HS_FS;
-        #endif
-
-        // Configure USB FS GPIOs
-        mp_hal_pin_config(pin_B14, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, otg_alt);
-        mp_hal_pin_config_speed(pin_B14, GPIO_SPEED_FREQ_VERY_HIGH);
-        mp_hal_pin_config(pin_B15, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, otg_alt);
-        mp_hal_pin_config_speed(pin_B15, GPIO_SPEED_FREQ_VERY_HIGH);
-
-        #if defined(MICROPY_HW_USB_VBUS_DETECT_PIN)
-        // Configure VBUS Pin
-        mp_hal_pin_config(MICROPY_HW_USB_VBUS_DETECT_PIN, MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_NONE, 0);
-        #endif
-
-        #if defined(MICROPY_HW_USB_OTG_ID_PIN)
-        // Configure ID pin
-        mp_hal_pin_config(MICROPY_HW_USB_OTG_ID_PIN, MP_HAL_PIN_MODE_ALT_OPEN_DRAIN, MP_HAL_PIN_PULL_UP, otg_alt);
-        #endif
-
-        // Enable calling WFI and correct function of the embedded USB_FS_IN_HS phy
-        __HAL_RCC_USB_OTG_HS_ULPI_CLK_SLEEP_DISABLE();
-        __HAL_RCC_USB_OTG_HS_CLK_SLEEP_ENABLE();
-
-        // Enable USB HS Clocks
-
-        #if defined(STM32F723xx) || defined(STM32F733xx)
-        // Needs to remain awake during sleep or else __WFI() will disable the USB
-        __HAL_RCC_USB_OTG_HS_ULPI_CLK_SLEEP_ENABLE();
-        __HAL_RCC_OTGPHYC_CLK_ENABLE();
-        __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
-        #endif
-
-        __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
-
-        #else // !MICROPY_HW_USB_HS_IN_FS
-
-        // Configure USB HS GPIOs
-        static const mp_hal_pin_obj_t usb_pins[] = {
-            pin_A5, pin_C0, pin_H4, pin_I11, // CLK, STP, NXT, DIR
-            pin_A3, pin_B0, pin_B1, pin_B5, pin_B10, pin_B11, pin_B12, pin_B13, // D0-D7
-        };
-        for (size_t i = 0; i < MP_ARRAY_SIZE(usb_pins); ++i) {
-            mp_hal_pin_config(usb_pins[i], MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, GPIO_AF10_OTG_HS);
-            mp_hal_pin_config_speed(usb_pins[i], GPIO_SPEED_FREQ_VERY_HIGH);
-        }
-
-        // Enable USB HS Clocks
-        __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
-        __HAL_RCC_USB_OTG_HS_CLK_SLEEP_ENABLE();
-        __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
-        __HAL_RCC_USB_OTG_HS_ULPI_CLK_SLEEP_ENABLE();
-
-        #endif // !MICROPY_HW_USB_HS_IN_FS
-
-        // Configure and enable USB HS interrupt
-        NVIC_SetPriority(OTG_HS_IRQn, IRQ_PRI_OTG_HS);
-        HAL_NVIC_EnableIRQ(OTG_HS_IRQn);
-    }
-    #endif // MICROPY_HW_USB_HS
-
-	#endif
-	
 }
 
 /**
@@ -218,29 +85,23 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef *hpcd) {
   * @retval None
   */
 void HAL_PCD_MspDeInit(PCD_HandleTypeDef *hpcd) {
-	
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-	#if defined(STM32F1)
-	if (hpcd->Instance == USB) {
-        /* Disable USB FS Clocks */
-        __HAL_RCC_USB_CLK_DISABLE();
-    }
-	#else
-    if (hpcd->Instance == USB_OTG_FS) {
-        /* Disable USB FS Clocks */
-        __USB_OTG_FS_CLK_DISABLE();
-        __SYSCFG_CLK_DISABLE();
-    }
-    #if MICROPY_HW_USB_HS
-    else if (hpcd->Instance == USB_OTG_HS) {
-        /* Disable USB FS Clocks */
-        __USB_OTG_HS_CLK_DISABLE();
-        __SYSCFG_CLK_DISABLE();
-    }
-    #endif
-	#endif
+	if(hpcd->Instance==USB)
+	{
+		/* USER CODE BEGIN USB_MspDeInit 0 */
+
+		/* USER CODE END USB_MspDeInit 0 */
+		/* Peripheral clock disable */
+		__HAL_RCC_USB_CLK_DISABLE();
+
+		/* Peripheral interrupt Deinit*/
+		HAL_NVIC_DisableIRQ(USB_HP_CAN1_TX_IRQn);
+
+		HAL_NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn);
+
+		/* USER CODE BEGIN USB_MspDeInit 1 */
+
+		/* USER CODE END USB_MspDeInit 1 */
+	}
 }
 
 /*******************************************************************************
@@ -295,28 +156,17 @@ void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd)
   * @retval None
   */
 void HAL_PCD_ResetCallback(PCD_HandleTypeDef *hpcd) {
-    USBD_SpeedTypeDef speed = USBD_SPEED_FULL;
+	USBD_SpeedTypeDef speed = USBD_SPEED_FULL;
 
-    // Set USB Current Speed
-    switch (hpcd->Init.speed) {
-        #if defined(PCD_SPEED_HIGH)
-        case PCD_SPEED_HIGH:
-            speed = USBD_SPEED_HIGH;
-            break;
-        #endif
+	if ( hpcd->Init.speed != PCD_SPEED_FULL)
+	{
+		//Error_Handler();
+	}
+	/* Set Speed. */
+	USBD_LL_SetSpeed((USBD_HandleTypeDef*)hpcd->pData, speed);
 
-        case PCD_SPEED_FULL:
-            speed = USBD_SPEED_FULL;
-            break;
-
-        default:
-            speed = USBD_SPEED_FULL;
-            break;
-    }
-    USBD_LL_SetSpeed(hpcd->pData, speed);
-
-    // Reset Device
-    USBD_LL_Reset(hpcd->pData);
+	/* Reset Device. */
+	USBD_LL_Reset((USBD_HandleTypeDef*)hpcd->pData);
 }
 
 /**
@@ -325,7 +175,16 @@ void HAL_PCD_ResetCallback(PCD_HandleTypeDef *hpcd) {
   * @retval None
   */
 void HAL_PCD_SuspendCallback(PCD_HandleTypeDef *hpcd) {
-    USBD_LL_Suspend(hpcd->pData);
+	/* Inform USB library that core enters in suspend Mode. */
+	USBD_LL_Suspend((USBD_HandleTypeDef*)hpcd->pData);
+	/* Enter in STOP mode. */
+	/* USER CODE BEGIN 2 */
+	if (hpcd->Init.low_power_enable)
+	{
+		/* Set SLEEPDEEP bit and SleepOnExit of Cortex System Control Register. */
+		SCB->SCR |= (uint32_t)((uint32_t)(SCB_SCR_SLEEPDEEP_Msk | SCB_SCR_SLEEPONEXIT_Msk));
+	}
+	/* USER CODE END 2 */
 }
 
 /**
@@ -385,174 +244,57 @@ void HAL_PCD_DisconnectCallback(PCD_HandleTypeDef *hpcd) {
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev, int high_speed) {
+	/* Init USB Ip. */
+	/* Link the driver to the stack. */
+	hpcd_USB_FS.pData = pdev;
+	pdev->pData = &hpcd_USB_FS;
+
+	hpcd_USB_FS.Instance = USB;
+	hpcd_USB_FS.Init.dev_endpoints = 8;
+	hpcd_USB_FS.Init.speed = PCD_SPEED_FULL;
+	hpcd_USB_FS.Init.low_power_enable = DISABLE;
+	hpcd_USB_FS.Init.lpm_enable = DISABLE;
+	hpcd_USB_FS.Init.battery_charging_enable = DISABLE;
+	if (HAL_PCD_Init(&hpcd_USB_FS) != HAL_OK)
+	{
+		//Error_Handler( );
+	}
+	//#define MSC_IN_EP     (0x81)
+	//#define MSC_OUT_EP    (0x01)
+	//#define CDC_IN_EP     (0x83)
+	//#define CDC_OUT_EP    (0x03)
+	//#define CDC_CMD_EP    (0x82)
+	//#define CDC2_IN_EP    (0x85)
+	//#define CDC2_OUT_EP   (0x05)
+	//#define CDC2_CMD_EP   (0x84)
+	//#define HID_IN_EP_WITH_CDC (0x81)
+	//#define HID_OUT_EP_WITH_CDC (0x01)
+	//#define HID_IN_EP_WITH_MSC (0x83)
+	//#define HID_OUT_EP_WITH_MSC (0x03)
 	
-	/*--------------------------------*/
-	/*----Add to support stm32f1------*/
-	/*--------------------------------*/
-	#if defined(STM32F1)
-		// Set LL Driver parameters
-        pcd_fs_handle.Instance = USB;
-        #if MICROPY_HW_USB_ENABLE_CDC2
-        pcd_fs_handle.Init.dev_endpoints = 6;
-        #else
-        pcd_fs_handle.Init.dev_endpoints = 4;
-        #endif
-        //pcd_fs_handle.Init.use_dedicated_ep1 = 0;
-        pcd_fs_handle.Init.ep0_mps = 0x40;
-        //pcd_fs_handle.Init.dma_enable = 0;
-        pcd_fs_handle.Init.low_power_enable = 0;
-        pcd_fs_handle.Init.phy_itface = PCD_PHY_EMBEDDED;
-        pcd_fs_handle.Init.Sof_enable = 0;
-        pcd_fs_handle.Init.speed = PCD_SPEED_FULL;
-        #if defined(STM32L4)
-        pcd_fs_handle.Init.lpm_enable = DISABLE;
-        pcd_fs_handle.Init.battery_charging_enable = DISABLE;
-        #endif
-        #if !defined(MICROPY_HW_USB_VBUS_DETECT_PIN)
-        //pcd_fs_handle.Init.vbus_sensing_enable = 0; // No VBUS Sensing on USB0
-        #else
-        pcd_fs_handle.Init.vbus_sensing_enable = 1;
-        #endif
-
-        // Link The driver to the stack
-        pcd_fs_handle.pData = pdev;
-        pdev->pData = &pcd_fs_handle;
-
-        // Initialize LL Driver
-        HAL_PCD_Init(&pcd_fs_handle);
-
-        // We have 320 32-bit words in total to use here
-        #if MICROPY_HW_USB_ENABLE_CDC2
-        HAL_PCD_SetRxFiFo(&pcd_fs_handle, 128);
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 0, 32); // EP0
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 1, 64); // MSC / HID
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 2, 16); // CDC CMD
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 3, 32); // CDC DATA
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 4, 16); // CDC2 CMD
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 5, 32); // CDC2 DATA
-        #else
-        //HAL_PCD_SetRxFiFo(&pcd_fs_handle, 128);
-        //HAL_PCD_SetTxFiFo(&pcd_fs_handle, 0, 32); // EP0
-        //HAL_PCD_SetTxFiFo(&pcd_fs_handle, 1, 64); // MSC / HID
-        //HAL_PCD_SetTxFiFo(&pcd_fs_handle, 2, 32); // CDC CMD
-        //HAL_PCD_SetTxFiFo(&pcd_fs_handle, 3, 64); // CDC DATA
-        #endif
+	/* USER CODE BEGIN EndPoint_Configuration */
+	uint16_t addr = 0;
+	addr = 64 ;
+	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x00 , PCD_SNG_BUF, addr);
+	addr += 64;
+	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x80 , PCD_SNG_BUF, addr);
+	addr += 64;
+	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x01 , PCD_SNG_BUF, addr);
+	addr += 64;
+	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x81 , PCD_SNG_BUF, addr);
+	addr += 64;
+	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x02 , PCD_SNG_BUF, addr);
+	addr += 64;
+	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x82 , PCD_SNG_BUF, addr);
+	addr += 64;
+	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x83 , PCD_SNG_BUF, addr);
+	addr += 64;
+	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x03 , PCD_SNG_BUF, addr);
 	
-		return USBD_OK;
-	#else
-    #if MICROPY_HW_USB_FS
-    if (pdev->id ==  USB_PHY_FS_ID) {
-        // Set LL Driver parameters
-        pcd_fs_handle.Instance = USB_OTG_FS;
-        #if MICROPY_HW_USB_ENABLE_CDC2
-        pcd_fs_handle.Init.dev_endpoints = 6;
-        #else
-        pcd_fs_handle.Init.dev_endpoints = 4;
-        #endif
-        pcd_fs_handle.Init.use_dedicated_ep1 = 0;
-        pcd_fs_handle.Init.ep0_mps = 0x40;
-        pcd_fs_handle.Init.dma_enable = 0;
-        pcd_fs_handle.Init.low_power_enable = 0;
-        pcd_fs_handle.Init.phy_itface = PCD_PHY_EMBEDDED;
-        pcd_fs_handle.Init.Sof_enable = 0;
-        pcd_fs_handle.Init.speed = PCD_SPEED_FULL;
-        #if defined(STM32L4)
-        pcd_fs_handle.Init.lpm_enable = DISABLE;
-        pcd_fs_handle.Init.battery_charging_enable = DISABLE;
-        #endif
-        #if !defined(MICROPY_HW_USB_VBUS_DETECT_PIN)
-        pcd_fs_handle.Init.vbus_sensing_enable = 0; // No VBUS Sensing on USB0
-        #else
-        pcd_fs_handle.Init.vbus_sensing_enable = 1;
-        #endif
-
-        // Link The driver to the stack
-        pcd_fs_handle.pData = pdev;
-        pdev->pData = &pcd_fs_handle;
-
-        // Initialize LL Driver
-        HAL_PCD_Init(&pcd_fs_handle);
-
-        // We have 320 32-bit words in total to use here
-        #if MICROPY_HW_USB_ENABLE_CDC2
-        HAL_PCD_SetRxFiFo(&pcd_fs_handle, 128);
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 0, 32); // EP0
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 1, 64); // MSC / HID
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 2, 16); // CDC CMD
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 3, 32); // CDC DATA
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 4, 16); // CDC2 CMD
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 5, 32); // CDC2 DATA
-        #else
-        HAL_PCD_SetRxFiFo(&pcd_fs_handle, 128);
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 0, 32); // EP0
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 1, 64); // MSC / HID
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 2, 32); // CDC CMD
-        HAL_PCD_SetTxFiFo(&pcd_fs_handle, 3, 64); // CDC DATA
-        #endif
-    }
-    #endif
-    #if MICROPY_HW_USB_HS
-    if (pdev->id == USB_PHY_HS_ID) {
-        // Set LL Driver parameters
-        pcd_hs_handle.Instance = USB_OTG_HS;
-        pcd_hs_handle.Init.dev_endpoints = 6;
-        pcd_hs_handle.Init.use_dedicated_ep1 = 0;
-        pcd_hs_handle.Init.ep0_mps = 0x40;
-        pcd_hs_handle.Init.dma_enable = 0;
-        pcd_hs_handle.Init.low_power_enable = 0;
-        pcd_hs_handle.Init.lpm_enable = DISABLE;
-        pcd_hs_handle.Init.battery_charging_enable = DISABLE;
-        pcd_hs_handle.Init.Sof_enable = 0;
-        pcd_hs_handle.Init.use_external_vbus = 0;
-
-        #if !defined(MICROPY_HW_USB_VBUS_DETECT_PIN)
-        pcd_hs_handle.Init.vbus_sensing_enable = 0; // No VBUS Sensing on USB0
-        #else
-        pcd_hs_handle.Init.vbus_sensing_enable = 1;
-        #endif
-
-        #if MICROPY_HW_USB_HS_IN_FS
-
-        #if defined(STM32F723xx) || defined(STM32F733xx)
-        pcd_hs_handle.Init.phy_itface = USB_OTG_HS_EMBEDDED_PHY;
-        #else
-        pcd_hs_handle.Init.phy_itface = PCD_PHY_EMBEDDED;
-        #endif
-
-        if (high_speed) {
-            pcd_hs_handle.Init.speed = PCD_SPEED_HIGH;
-        } else {
-            pcd_hs_handle.Init.speed = PCD_SPEED_HIGH_IN_FULL;
-        }
-
-        #else
-
-        // USB HS with external PHY
-        pcd_hs_handle.Init.phy_itface = PCD_PHY_ULPI;
-        pcd_hs_handle.Init.speed = PCD_SPEED_HIGH;
-
-        #endif
-
-        // Link The driver to the stack
-        pcd_hs_handle.pData = pdev;
-        pdev->pData = &pcd_hs_handle;
-
-        // Initialize LL Driver
-        HAL_PCD_Init(&pcd_hs_handle);
-
-        // We have 1024 32-bit words in total to use here
-        HAL_PCD_SetRxFiFo(&pcd_hs_handle, 464);
-        HAL_PCD_SetTxFiFo(&pcd_hs_handle, 0, 32); // EP0
-        HAL_PCD_SetTxFiFo(&pcd_hs_handle, 1, 256); // MSC / HID
-        HAL_PCD_SetTxFiFo(&pcd_hs_handle, 2, 8); // CDC CMD
-        HAL_PCD_SetTxFiFo(&pcd_hs_handle, 3, 128); // CDC DATA
-        HAL_PCD_SetTxFiFo(&pcd_hs_handle, 4, 8); // CDC2 CMD
-        HAL_PCD_SetTxFiFo(&pcd_hs_handle, 5, 128); // CDC2 DATA
-    }
-    #endif  // MICROPY_HW_USB_HS
-
-    return USBD_OK;
-	#endif
+	//HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x84 , PCD_SNG_BUF, 0x118);
+	//HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x04 , PCD_SNG_BUF, 0x158);
+	/* USER CODE END EndPoint_Configuration_MSC */
+	return USBD_OK;
 }
 
 /**
@@ -561,8 +303,14 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev, int high_speed) {
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_DeInit(USBD_HandleTypeDef *pdev) {
-    HAL_PCD_DeInit(pdev->pData);
-    return USBD_OK;
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_DeInit(pdev->pData);
+
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status; 
 }
 
 /**
@@ -571,8 +319,14 @@ USBD_StatusTypeDef USBD_LL_DeInit(USBD_HandleTypeDef *pdev) {
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_Start(USBD_HandleTypeDef *pdev) {
-    HAL_PCD_Start(pdev->pData);
-    return USBD_OK;
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_Start(pdev->pData);
+	 
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status;
 }
 
 /**
@@ -581,8 +335,14 @@ USBD_StatusTypeDef USBD_LL_Start(USBD_HandleTypeDef *pdev) {
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_Stop(USBD_HandleTypeDef *pdev) {
-    HAL_PCD_Stop(pdev->pData);
-    return USBD_OK;
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_Stop(pdev->pData);
+
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status;
 }
 
 /**
@@ -593,10 +353,16 @@ USBD_StatusTypeDef USBD_LL_Stop(USBD_HandleTypeDef *pdev) {
   * @param  ep_mps: Endpoint Max Packet Size
   * @retval USBD Status
   */
-USBD_StatusTypeDef USBD_LL_OpenEP(USBD_HandleTypeDef *pdev,
-    uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps) {
-    HAL_PCD_EP_Open(pdev->pData, ep_addr, ep_mps, ep_type);
-    return USBD_OK;
+USBD_StatusTypeDef USBD_LL_OpenEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps)
+{
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_EP_Open(pdev->pData, ep_addr, ep_mps, ep_type);
+
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status;
 }
 
 /**
@@ -606,8 +372,14 @@ USBD_StatusTypeDef USBD_LL_OpenEP(USBD_HandleTypeDef *pdev,
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_CloseEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr) {
-    HAL_PCD_EP_Close(pdev->pData, ep_addr);
-    return USBD_OK;
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_EP_Close(pdev->pData, ep_addr);
+	  
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status;  
 }
 
 /**
@@ -617,8 +389,14 @@ USBD_StatusTypeDef USBD_LL_CloseEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr) {
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_FlushEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr) {
-    HAL_PCD_EP_Flush(pdev->pData, ep_addr);
-    return USBD_OK;
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_EP_Flush(pdev->pData, ep_addr);
+	  
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status;  
 }
 
 /**
@@ -628,8 +406,14 @@ USBD_StatusTypeDef USBD_LL_FlushEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr) {
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_StallEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr) {
-    HAL_PCD_EP_SetStall(pdev->pData, ep_addr);
-    return USBD_OK;
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_EP_SetStall(pdev->pData, ep_addr);
+
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status;  
 }
 
 /**
@@ -639,8 +423,14 @@ USBD_StatusTypeDef USBD_LL_StallEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr) {
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_ClearStallEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr) {
-    HAL_PCD_EP_ClrStall(pdev->pData, ep_addr);
-    return USBD_OK;
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_EP_ClrStall(pdev->pData, ep_addr);  
+	 
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status; 
 }
 
 /**
@@ -666,8 +456,14 @@ uint8_t USBD_LL_IsStallEP(USBD_HandleTypeDef *pdev, uint8_t ep_addr) {
   * @retval USBD Status
   */
 USBD_StatusTypeDef USBD_LL_SetUSBAddress(USBD_HandleTypeDef *pdev, uint8_t dev_addr) {
-    HAL_PCD_SetAddress(pdev->pData, dev_addr);
-    return USBD_OK;
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_SetAddress(pdev->pData, dev_addr);
+	 
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status;  
 }
 
 /**
@@ -678,10 +474,16 @@ USBD_StatusTypeDef USBD_LL_SetUSBAddress(USBD_HandleTypeDef *pdev, uint8_t dev_a
   * @param  size: Data size
   * @retval USBD Status
   */
-USBD_StatusTypeDef USBD_LL_Transmit(USBD_HandleTypeDef *pdev,
-    uint8_t ep_addr, uint8_t *pbuf, uint16_t size) {
-    HAL_PCD_EP_Transmit(pdev->pData, ep_addr, pbuf, size);
-    return USBD_OK;
+USBD_StatusTypeDef USBD_LL_Transmit(USBD_HandleTypeDef *pdev, uint8_t ep_addr, uint8_t *pbuf, uint16_t size)
+{
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_EP_Transmit(pdev->pData, ep_addr, pbuf, size);
+	 
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status;    
 }
 
 /**
@@ -692,10 +494,16 @@ USBD_StatusTypeDef USBD_LL_Transmit(USBD_HandleTypeDef *pdev,
   * @param  size: data size
   * @retval USBD Status
   */
-USBD_StatusTypeDef USBD_LL_PrepareReceive(USBD_HandleTypeDef *pdev,
-    uint8_t ep_addr, uint8_t *pbuf, uint16_t size) {
-    HAL_PCD_EP_Receive(pdev->pData, ep_addr, pbuf, size);
-    return USBD_OK;
+USBD_StatusTypeDef USBD_LL_PrepareReceive(USBD_HandleTypeDef *pdev, uint8_t ep_addr, uint8_t *pbuf, uint16_t size)
+{
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	hal_status = HAL_PCD_EP_Receive(pdev->pData, ep_addr, pbuf, size);
+	 
+	usb_status =  USBD_Get_USB_Status(hal_status);
+
+	return usb_status; 
 }
 
 /**
@@ -716,6 +524,48 @@ uint32_t USBD_LL_GetRxDataSize(USBD_HandleTypeDef *pdev, uint8_t  ep_addr) {
 void USBD_LL_Delay(uint32_t Delay) {
     HAL_Delay(Delay);
 }
+
+//void *USBD_static_malloc(uint32_t size)
+//{
+//	static uint32_t mem[(sizeof(USBD_MSC_BOT_HandleTypeDef)/4)+1];/* On 32-bit boundary */
+//	return mem;
+//}
+//
+///**
+//  * @brief  Dummy memory free
+//  * @param  p: Pointer to allocated  memory address
+//  * @retval None
+//  */
+//void USBD_static_free(void *p)
+//{
+//
+//}
+
+USBD_StatusTypeDef USBD_Get_USB_Status(HAL_StatusTypeDef hal_status)
+{
+	USBD_StatusTypeDef usb_status = USBD_OK;
+
+	switch (hal_status)
+	{
+	case HAL_OK :
+	  usb_status = USBD_OK;
+	break;
+	case HAL_ERROR :
+	  usb_status = USBD_FAIL;
+	break;
+	case HAL_BUSY :
+	  usb_status = USBD_BUSY;
+	break;
+	case HAL_TIMEOUT :
+	  usb_status = USBD_FAIL;
+	break;
+	default :
+	  usb_status = USBD_FAIL;
+	break;
+	}
+	return usb_status;
+}
+
 
 #endif // MICROPY_HW_USB_FS || MICROPY_HW_USB_HS
 

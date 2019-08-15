@@ -59,7 +59,7 @@
 #elif defined(STM32F1)
 
 STATIC byte flash_cache_mem[2048] __attribute__((aligned(4))); // 16k
-#define flash_start_k				300
+#define flash_start_k				350
 #define CACHE_MEM_START_ADDR		(&flash_cache_mem[0])
 #define FLASH_SECTOR_SIZE_MAX		0x800 //2048 2k
 #define FLASH_MEM_SEG1_START_ADDR	0x8000000 + flash_start_k * 1024

@@ -137,28 +137,31 @@ int8_t usbd_cdc_control(usbd_cdc_state_t *cdc_in, uint8_t cmd, uint8_t* pbuf, ui
 
         case CDC_SET_CONTROL_LINE_STATE: {
             // wValue, indicating the state, is passed in length (bit of a hack)
+			
+			/*--------------------------------*/
+			/*----Add to support stm32f1------*/
+			/*--------------------------------*/
+			#if defined(STM32F1)
+			if (length & 1) {
+				cdc->connect_state = USBD_CDC_CONNECT_STATE_CONNECTING;
+				usbd_cdc_connect_tx_timer = 8; // wait for 8 SOF IRQs
+			} else {
+				cdc->connect_state = USBD_CDC_CONNECT_STATE_DISCONNECTED;
+			}
+			
+			#else
             if (length & 1) {
                 // The actual connection state is delayed to give the host a chance to
                 // configure its serial port (in most cases to disable local echo)
-				/*--------------------------------*/
-				/*----Add to support stm32f1------*/
-				/*--------------------------------*/
-				#if defined(STM32F1)
-				//PCD_HandleTypeDef *hpcd = cdc->base.usbd->pdev->pData;
-				//USB_TypeDef *USBx = hpcd->Instance;
-                cdc->connect_state = USBD_CDC_CONNECT_STATE_CONNECTING;
-                usbd_cdc_connect_tx_timer = 8; // wait for 8 SOF IRQs
-                //USBx->GINTMSK |= USB_OTG_GINTMSK_SOFM;
-				#else
                 PCD_HandleTypeDef *hpcd = cdc->base.usbd->pdev->pData;
                 USB_OTG_GlobalTypeDef *USBx = hpcd->Instance;
                 cdc->connect_state = USBD_CDC_CONNECT_STATE_CONNECTING;
                 usbd_cdc_connect_tx_timer = 8; // wait for 8 SOF IRQs
                 USBx->GINTMSK |= USB_OTG_GINTMSK_SOFM;
-				#endif
             } else {
                 cdc->connect_state = USBD_CDC_CONNECT_STATE_DISCONNECTED;
             }
+			#endif
             break;
         }
 
@@ -223,16 +226,34 @@ static void usbd_cdc_try_tx(usbd_cdc_itf_t *cdc) {
 }
 
 void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd) {
+	/*--------------------------------*/
+	/*----Add to support stm32f1------*/
+	/*--------------------------------*/
+	#if defined(STM32F1)
+	USBD_LL_SOF(hpcd->pData);
+	if (usbd_cdc_connect_tx_timer > 0) {
+		--usbd_cdc_connect_tx_timer;
+	} else {
+		usbd_cdc_msc_hid_state_t *usbd = ((USBD_HandleTypeDef*)hpcd->pData)->pClassData;
+		usbd_cdc_itf_t *cdc = (usbd_cdc_itf_t*)usbd->cdc;
+		if (cdc->connect_state == USBD_CDC_CONNECT_STATE_CONNECTING) {
+			cdc->connect_state = USBD_CDC_CONNECT_STATE_CONNECTED;
+			usbd_cdc_try_tx(cdc);
+		}
+		#if MICROPY_HW_USB_ENABLE_CDC2
+		cdc = (usbd_cdc_itf_t*)usbd->cdc2;
+		if (cdc->connect_state == USBD_CDC_CONNECT_STATE_CONNECTING) {
+			cdc->connect_state = USBD_CDC_CONNECT_STATE_CONNECTED;
+			usbd_cdc_try_tx(cdc);
+		}
+		#endif
+	}
+	#else
     if (usbd_cdc_connect_tx_timer > 0) {
         --usbd_cdc_connect_tx_timer;
     } else {
         usbd_cdc_msc_hid_state_t *usbd = ((USBD_HandleTypeDef*)hpcd->pData)->pClassData;
-		/*--------------------------------*/
-		/*----Add to support stm32f1------*/
-		/*--------------------------------*/
-		#if !defined(STM32F1)
         hpcd->Instance->GINTMSK &= ~USB_OTG_GINTMSK_SOFM;
-		#endif
         usbd_cdc_itf_t *cdc = (usbd_cdc_itf_t*)usbd->cdc;
         if (cdc->connect_state == USBD_CDC_CONNECT_STATE_CONNECTING) {
             cdc->connect_state = USBD_CDC_CONNECT_STATE_CONNECTED;
@@ -246,6 +267,7 @@ void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd) {
         }
         #endif
     }
+	#endif
 }
 
 bool usbd_cdc_rx_buffer_full(usbd_cdc_itf_t *cdc) {
