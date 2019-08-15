@@ -49,9 +49,6 @@
 #endif
 #define USBD_DEBUG_LEVEL                      0
 
-#define DEVICE_FS 		0
-
-
 #endif // MICROPY_INCLUDED_STM32_USBD_CONF_H
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

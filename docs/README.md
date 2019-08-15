@@ -22,8 +22,10 @@ pin ok
 uart ok  
 spi ok  
 i2c ok  
-sdcard ok
+sdcard ok  
+usb MSC ok  
 can not test  
+
 
 目前問題  
 有些外設使用DMA會有問題  

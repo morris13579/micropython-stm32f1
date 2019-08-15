@@ -479,7 +479,10 @@ STATIC HAL_StatusTypeDef sdcard_wait_finished(uint32_t timeout) {
                 break;
             }
         }
+        #if !defined(STM32F1)
+		//stm32f1加了會導致程式當掉
         __WFI();
+		#endif
         enable_irq(irq_state);
         if (HAL_GetTick() - start >= timeout) {
             return HAL_TIMEOUT;
@@ -522,7 +525,7 @@ STATIC HAL_StatusTypeDef sdcard_wait_finished(uint32_t timeout) {
 }
 
 
-
+//#include "stdio.h"
 ///**
 //  * @brief Tx Transfer completed callbacks
 //  * @param hsd: Pointer to SD handle

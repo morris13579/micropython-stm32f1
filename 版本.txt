@@ -51,6 +51,12 @@ pin read mode bug
 2.4
 整理
 
+2.5
+add usb
+
+2.6
+usb msc ok
+
 
 
 
