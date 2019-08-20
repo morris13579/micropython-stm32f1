@@ -1116,7 +1116,6 @@ uint8_t USBD_HID_SetNAK(usbd_hid_state_t *hid) {
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
 	#if defined(STM32F1)
-	
 	#else
     // get USBx object from pdev (needed for USBx_OUTEP macro below)
     PCD_HandleTypeDef *hpcd = hid->usbd->pdev->pData;

@@ -67,6 +67,7 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef *hpcd) {
 		__HAL_RCC_USB_CLK_ENABLE();
 
 		/* Peripheral interrupt init */
+		//優先值一定要設成IRQ_PRI_OTG_FS 不然會造成sd卡讀取問題
 		NVIC_SetPriority(USB_HP_CAN1_TX_IRQn, IRQ_PRI_OTG_FS);
 		HAL_NVIC_EnableIRQ(USB_HP_CAN1_TX_IRQn);
 		NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, IRQ_PRI_OTG_FS);
@@ -409,11 +410,11 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev, int high_speed) {
 	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x81 , PCD_SNG_BUF, addr);
 	addr += 32;
 	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x02 , PCD_SNG_BUF, addr);
-	addr += 32;
+	addr += 64;
 	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x82 , PCD_SNG_BUF, addr);
-	addr += 32;
+	addr += 64;
 	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x83 , PCD_SNG_BUF, addr);
-	addr += 32;
+	addr += 64;
 	HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , 0x03 , PCD_SNG_BUF, addr);
 	#if MICROPY_HW_USB_ENABLE_CDC2
 	addr += 32;

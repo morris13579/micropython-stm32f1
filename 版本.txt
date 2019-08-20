@@ -57,6 +57,10 @@ add usb
 2.6
 usb msc ok
 
+2.7
+usb cdc ok
+usb hid ok
+
 
 
 

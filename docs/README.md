@@ -24,6 +24,7 @@ spi ok
 i2c ok  
 sdcard ok  
 usb MSC ok  
+usb cdc ok 需要開啟DTR  
 can not test  
 
 

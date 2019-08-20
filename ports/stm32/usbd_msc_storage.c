@@ -260,11 +260,9 @@ int8_t SDCARD_STORAGE_PreventAllowMediumRemoval(uint8_t lun, uint8_t param) {
   * @retval Status
   */
 int8_t SDCARD_STORAGE_Read(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len) {
-	printf("read \n");
     if (sdcard_read_blocks(buf, blk_addr, blk_len) != 0) {
         return -1;
     }
-	printf("read ok\n");
     return 0;
 }
 
@@ -277,11 +275,9 @@ int8_t SDCARD_STORAGE_Read(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_
   * @retval Status
   */
 int8_t SDCARD_STORAGE_Write(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len) {
-	printf("write \n");
     if (sdcard_write_blocks(buf, blk_addr, blk_len) != 0) {
         return -1;
     }
-	printf("write ok\n");
     return 0;
 }
 

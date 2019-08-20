@@ -143,8 +143,10 @@ int8_t usbd_cdc_control(usbd_cdc_state_t *cdc_in, uint8_t cmd, uint8_t* pbuf, ui
 			/*--------------------------------*/
 			#if defined(STM32F1)
 			if (length & 1) {
+				PCD_HandleTypeDef *hpcd = cdc->base.usbd->pdev->pData;
 				cdc->connect_state = USBD_CDC_CONNECT_STATE_CONNECTING;
 				usbd_cdc_connect_tx_timer = 8; // wait for 8 SOF IRQs
+				hpcd->Instance->CNTR |= USB_CNTR_SOFM;
 			} else {
 				cdc->connect_state = USBD_CDC_CONNECT_STATE_DISCONNECTED;
 			}
@@ -230,11 +232,11 @@ void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd) {
 	/*----Add to support stm32f1------*/
 	/*--------------------------------*/
 	#if defined(STM32F1)
-	USBD_LL_SOF(hpcd->pData);
 	if (usbd_cdc_connect_tx_timer > 0) {
 		--usbd_cdc_connect_tx_timer;
 	} else {
 		usbd_cdc_msc_hid_state_t *usbd = ((USBD_HandleTypeDef*)hpcd->pData)->pClassData;
+		hpcd->Instance->CNTR &= ~USB_CNTR_SOFM;
 		usbd_cdc_itf_t *cdc = (usbd_cdc_itf_t*)usbd->cdc;
 		if (cdc->connect_state == USBD_CDC_CONNECT_STATE_CONNECTING) {
 			cdc->connect_state = USBD_CDC_CONNECT_STATE_CONNECTED;
